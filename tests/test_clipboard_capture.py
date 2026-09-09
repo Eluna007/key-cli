@@ -32,6 +32,7 @@ def clipboard_cli(tmp_path):
         PYTHONPATH=str(Path(__file__).resolve().parents[1] / "src"),
         XDG_RUNTIME_DIR=str(tmp_path),
         XDG_CACHE_HOME=str(tmp_path / "cache"),
+        XDG_CONFIG_HOME=str(tmp_path / "config"),
         CLIPBOARD_TEST_DIR=str(tmp_path),
     )
     env.pop("CLIPBOARD_TYPE", None)
@@ -246,3 +247,14 @@ def test_watcher_restores_single_semantic_representation(clipboard_cli, source, 
     assert payload["capabilities"]["originalMimePreserved"] is False
     assert (root / "copied").read_bytes() == source
     assert json.loads((root / "copy-args.json").read_text()) == ["--foreground", "--type", mime]
+
+
+def test_running_watcher_reads_updated_limit_on_next_callback(clipboard_cli):
+    root, invoke = clipboard_cli
+    assert invoke(["config", "--max-items", "750"]).returncode == 0
+    captured = invoke(["watch"], {"text/plain": b"first payload"}, nextMaxItems=50)
+    assert captured.returncode == 0, captured.stderr.decode()
+    calls = [json.loads(line) for line in (root / "calls.jsonl").read_text().splitlines()]
+    stores = [args for name, args in calls if name == "cliphist"]
+    assert stores == [["-max-items", "750", "store"], ["-max-items", "50", "store"]]
+    assert (root / "stored").read_bytes() == b"next payload"

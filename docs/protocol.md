@@ -29,7 +29,7 @@ The stable command names currently exposed by JSON responses are:
 - `record.start`, `record.status`, `record.pause`, `record.resume` and `record.stop`;
 - `audio.start`, `audio.status` and `audio.stop`;
 - `clipboard.status`, `clipboard.list`, `clipboard.inspect`, `clipboard.restore`,
-  `clipboard.delete`, `clipboard.clear`, `clipboard.watch` and `clipboard.store`.
+  `clipboard.delete`, `clipboard.clear`, `clipboard.config`, `clipboard.watch` and `clipboard.store`.
 
 Recording and audio responses include a versioned state object. Stable state fields include
 `state`, `sessionId`, `pid`, `processStartTicks`, `processStartedAtMs`, `startedAtMs`,
@@ -38,7 +38,7 @@ The recording command additionally reports `type`, `target`, `fps` and `audio`; 
 reports the selected source and final duration when available. Paths are external paths,
 not implementation-specific temporary object names.
 
-Clipboard responses report the selected operation, dependency/capability information,
+Clipboard history responses report the selected operation, dependency/capability information,
 watcher state and, for entries, the stable `id`, MIME/payload classification and decoded
 metadata. Binary payload data is not embedded in the normal JSON response.
 
@@ -84,6 +84,40 @@ Consumers such as Clavis should keep validating the envelope and the capabilitie
 they use, accept additive capability fields, and display clipboard text with an
 explicit plain-text mode. Missing new fields on older key-cli builds do not imply
 support for multi-MIME or original MIME preservation.
+
+## Clipboard history configuration and list limits
+
+`key clipboard config --format json` reads the saved history limit.
+`key clipboard config --max-items 500 --format json` changes it. Both return:
+
+```json
+{"schemaVersion":1,"command":"clipboard.config","ok":true,"error":null,"maxItems":500}
+```
+
+This command needs no clipboard tools or running watcher. The sole persistent setting
+is `maxItems` in `$XDG_CONFIG_HOME/key/clipboard.json`, falling back to
+`~/.config/key/clipboard.json` when XDG_CONFIG_HOME is unset or empty. A missing file
+means 500 and reading it does not create a file. Writes accept only integers 50–750
+in steps of 50, use an atomic replacement, and return the saved value. Invalid input
+returns exit 2 with `invalid_clipboard_limit`; unreadable or corrupt existing files
+return exit 1 with `clipboard_config_read_failed`, and write failures return exit 1
+with `clipboard_config_write_failed`. Failed writes do not replace the old configuration.
+A corrupt file is never silently reset, including when a new value is supplied.
+
+Changing the limit applies trimming on the next actual save of a new record.
+Configuration reads/writes and list queries never prune history. Every existing
+watcher's `key clipboard store --stdin` callback reads the current configuration before
+calling `cliphist -max-items N store`; cliphist retains the newest N records using its
+native trimming. Other cliphist settings (database path, deduplication, size limits,
+etc.) remain in force. Sensitive, cleared, empty and otherwise rejected events do not
+trigger extra cleanup. Increasing the limit cannot restore previously removed entries.
+No shell or watcher restart is required.
+
+`clipboard.list --limit N` continues to default to 100 and clamps requests to 1–750
+lightweight records, skipping invalid lines. This query limit is independent of the
+saved history limit. Spotlight explicitly requests 750, then inspects details on demand;
+a list query does not decode every entry. Inspection's extended `searchText` and the
+original payload restoration protocol are unchanged.
 
 ## Clipboard capture
 

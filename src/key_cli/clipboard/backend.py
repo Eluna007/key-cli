@@ -12,12 +12,14 @@ import time
 from pathlib import Path
 from urllib.parse import unquote, urlparse
 
+from . import config
+
 from ..utils.output import DEPENDENCY_FAILURE, GENERAL_FAILURE, Result, error, fail
 from ..utils.executable import current_key_executable
 
 
 MAX_PAYLOAD = 64 * 1024 * 1024
-MAX_LIMIT = 500
+MAX_LIMIT = 750
 CAPABILITIES = {
     "inspect": True,
     "preview": True,
@@ -578,6 +580,8 @@ def common_payload(command: str, **values) -> dict:
 
 def run_command(args) -> Result:
     command = f"clipboard.{args.action}"
+    if args.action == "config":
+        return config.run(args.max_items)
     deps = dependencies()
     cliphist = executable("cliphist")
     wl_copy = executable("wl-copy")
@@ -683,7 +687,9 @@ def run_command(args) -> Result:
         entries = []
         limit = min(max(1, args.limit), MAX_LIMIT)
         for line in process.stdout.splitlines():
-            if len(entries) >= limit or b"\t" not in line:
+            if len(entries) >= limit:
+                break
+            if b"\t" not in line:
                 continue
             raw_id, raw_preview = line.split(b"\t", 1)
             if raw_id.isdigit() and int(raw_id) > 0:
@@ -944,7 +950,11 @@ def store(
             dependencies=deps,
         )
 
-    saved = run(cliphist, ["store"], selection_data)
+    try:
+        max_items = config.load()["maxItems"]
+    except (OSError, ValueError) as exc:
+        return fail(command, GENERAL_FAILURE, "clipboard_config_read_failed", str(exc))
+    saved = run(cliphist, ["-max-items", str(max_items), "store"], selection_data)
     good = bool(saved and saved.returncode == 0)
     return Result(
         0 if good else GENERAL_FAILURE,

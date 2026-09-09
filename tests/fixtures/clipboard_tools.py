@@ -19,7 +19,7 @@ with (root / "calls.jsonl").open("a") as log:
     log.write(json.dumps([program, args]) + "\n")
 
 if program == "cliphist":
-    if args == ["store"]:
+    if len(args) == 3 and args[0] == "-max-items" and args[2] == "store":
         (root / "stored").write_bytes(sys.stdin.buffer.read())
     elif args == ["decode"]:
         sys.stdin.buffer.read()
@@ -44,6 +44,14 @@ elif program == "wl-paste":
             env.pop("CLIPBOARD_TYPE", None)
         payload = base64.b64decode(config.get("stdinData", offer.get(mime, "")))
         result = subprocess.run(args[args.index("--watch") + 1 :], input=payload, env=env)
+        if result.returncode == 0 and "nextMaxItems" in config:
+            callback = args[args.index("--watch") + 1 :]
+            subprocess.run(
+                [callback[0], "clipboard", "config", "--max-items", str(config["nextMaxItems"])],
+                env=env,
+                check=True,
+            )
+            result = subprocess.run(callback, input=b"next payload", env=env)
         sys.exit(result.returncode)
     elif args == ["--list-types"]:
         if config.get("listFails"):

@@ -85,9 +85,19 @@ def build_parser() -> argparse.ArgumentParser:
     )
     clipboard_commands = clipboard_parser.add_subparsers(dest="action", required=True)
     list_parser = clipboard_commands.add_parser("list", help="list clipboard entries")
-    list_parser.add_argument("--limit", type=int, default=100)
+    list_parser.add_argument(
+        "--limit", type=int, default=100, help="maximum entries to return (1–750)"
+    )
     list_parser.add_argument("--format", choices=["json"], default=None)
     list_parser.add_argument("--json", action="store_true")
+    config_parser = clipboard_commands.add_parser(
+        "config", help="read or set the saved history limit"
+    )
+    config_parser.add_argument(
+        "--max-items", help="history limit: 50–750 in steps of 50 (default 500)"
+    )
+    config_parser.add_argument("--format", choices=["json"], default=None)
+    config_parser.add_argument("--json", action="store_true")
     for action in ("inspect", "restore", "delete"):
         sub = clipboard_commands.add_parser(action, help=f"{action} one clipboard entry")
         sub.add_argument("id")

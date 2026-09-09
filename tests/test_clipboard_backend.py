@@ -17,6 +17,13 @@ from key_cli.clipboard.backend import (
 )
 
 
+@pytest.fixture(autouse=True)
+def isolated_clipboard_paths(tmp_path, monkeypatch):
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "config"))
+    monkeypatch.setenv("XDG_CACHE_HOME", str(tmp_path / "cache"))
+    monkeypatch.setenv("XDG_RUNTIME_DIR", str(tmp_path / "runtime"))
+
+
 def test_png_metadata_and_safe_preview_shape() -> None:
     data = b"\x89PNG\r\n\x1a\n" + b"\x00" * 8 + (16).to_bytes(4, "big") + (8).to_bytes(4, "big")
     info = image_info(data)
@@ -151,7 +158,7 @@ def test_watcher_store_uses_supplied_payload_without_rereading_clipboard(
     assert result.json()["selectedMime"] == "text/plain;charset=utf-8"
     assert calls == [
         ("wl-paste", ["--list-types"], None),
-        ("cliphist", ["store"], b"<p>literal</p>"),
+        ("cliphist", ["-max-items", "500", "store"], b"<p>literal</p>"),
     ]
 
 
@@ -327,3 +334,29 @@ def test_wl_copy_reports_owner_start_failure(monkeypatch: pytest.MonkeyPatch) ->
 )
 def test_literal_mime_fallback_priority(offered, expected):
     assert select_mime(offered) == expected
+
+
+def test_list_can_return_750_valid_entries_without_inspection(monkeypatch):
+    monkeypatch.setattr(backend, "executable", lambda name: name)
+    calls = []
+
+    def listing(program, arguments, *args):
+        calls.append((program, arguments))
+        rows = [b"invalid", b"no-id\tignored", b"0\tignored"]
+        rows.extend(f"{i}\tentry {i}".encode() for i in range(800, 0, -1))
+        return subprocess.CompletedProcess([program, *arguments], 0, stdout=b"\n".join(rows))
+
+    monkeypatch.setattr(backend, "run", listing)
+    result = backend.run_command(SimpleNamespace(action="list", limit=750))
+    assert result.exit_code == 0
+    assert len(result.json()["entries"]) == 750
+    assert result.json()["entries"][-1]["id"] == "51"
+    assert calls == [("cliphist", ["list"])]
+
+
+def test_inspection_retains_search_text_beyond_preview():
+    text = "a" * 5000 + " searchable suffix"
+    payload, failure = inspect_payload("1", text.encode(), False)
+    assert failure is None
+    assert "searchable suffix" not in payload["preview"]
+    assert "searchable suffix" in payload["searchText"]
