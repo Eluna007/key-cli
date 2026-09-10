@@ -31,7 +31,9 @@ def main() -> int:
             raise SystemExit("wheel entry point does not expose key_cli:main")
 
         if any("/systemd/" in name or "/udev/" in name for name in names):
-            raise SystemExit("system resources belong to distribution packages, not the wheel")
+            raise SystemExit(
+                "system resources are deployed separately, not carried in the Python wheel"
+            )
         if "key_cli/keyboard/backend.py" not in names:
             raise SystemExit("wheel is missing the keyboard backend")
 

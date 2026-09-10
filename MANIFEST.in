@@ -1,0 +1,6 @@
+recursive-include scripts *.sh *.py
+recursive-include systemd *.service
+recursive-include completions *.fish
+recursive-include packaging/udev *.rules
+recursive-include docs *.md
+include AGENTS.md

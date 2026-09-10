@@ -1,3 +1,4 @@
+# Future distribution packaging reference; not the development/source install workflow.
 # Build from the local source archive prepared by scripts/build-packages.sh.
 pkgbase=key-cli
 pkgname=(key-cli key-cli-keyboard-access)

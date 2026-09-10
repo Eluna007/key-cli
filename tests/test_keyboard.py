@@ -229,7 +229,9 @@ def test_doctor_separates_dependencies_from_runtime(monkeypatch):
         ),
     )
     monkeypatch.setattr(doctor, "watcher_running", lambda: True)
-    monkeypatch.setattr(doctor.subprocess, "run", lambda *a, **kw: SimpleNamespace(returncode=0))
+    monkeypatch.setattr(
+        doctor.subprocess, "run", lambda *a, **kw: SimpleNamespace(returncode=0, stdout="")
+    )
     result = doctor.run(SimpleNamespace())
     assert result.exit_code == 0  # Existing dependency exit code is preserved.
     value = result.json()

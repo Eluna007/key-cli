@@ -249,3 +249,14 @@ Open uses `xdg-open` on the exact existing file. Relative paths are rejected (ex
 executables return exit 3, and missing paths, invalid desktop configuration, query timeout or
 launch errors return exit 5. Paths are passed as individual arguments, never shell source.
 `xdg-utils` is required; terminal file managers additionally require `xdg-terminal-exec`.
+
+### Installation diagnostics
+
+`key doctor --json` preserves `installation.keyPath` as the PATH-selected key and the
+existing exit-code contract. Additional fields distinguish `invocation`, `currentKey`,
+`pythonExecutable`, `modulePath`, inherited `clavisKey`, `userUnits` (effective
+FragmentPath/DropInPaths/ExecStart), `keyboardRules` (precedence order), `sourceManifest`
+and `developmentManifest`. `currentKey` is null for direct Python script/module invocation
+without a CLI entry point. Expected source installs/development overrides are not
+errors. `runtimeReady` still describes optional keyboard/clipboard runtime readiness,
+not main-program installation success. No unrelated environment variables are emitted.

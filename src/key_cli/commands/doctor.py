@@ -4,11 +4,13 @@ import platform
 import shutil
 import subprocess
 import os
+import sys
 from pathlib import Path
 from ..keyboard.backend import responses
 from ..clipboard.backend import watcher_running
 from typing import Any
 
+from ..utils.executable import current_key_executable
 from ..utils.output import DEPENDENCY_FAILURE, Result
 
 
@@ -42,6 +44,66 @@ def safe_version(program: str) -> str | None:
         if text:
             return text[0][:240]
     return None
+
+
+def installation_details():
+    config = Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config")
+    units = {}
+    for unit in ("clavis-clipboard.service", "clavis-shell.service"):
+        try:
+            probe = subprocess.run(
+                [
+                    "systemctl",
+                    "--user",
+                    "show",
+                    unit,
+                    "--property=FragmentPath,DropInPaths,ExecStart",
+                ],
+                capture_output=True,
+                text=True,
+                timeout=2,
+                check=False,
+            )
+            units[unit] = dict(
+                line.split("=", 1) for line in probe.stdout.splitlines() if "=" in line
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            units[unit] = {}
+    resources = []
+    for directory in (
+        "/etc/udev/rules.d",
+        "/run/udev/rules.d",
+        "/usr/local/lib/udev/rules.d",
+        "/usr/lib/udev/rules.d",
+    ):
+        path = Path(directory) / "71-clavis-keyboard-leds.rules"
+        if path.exists() or path.is_symlink():
+            resources.append(
+                {
+                    "path": str(path),
+                    "symlinkTarget": os.readlink(path) if path.is_symlink() else None,
+                }
+            )
+    return {
+        "keyPath": shutil.which("key"),  # preserved legacy field: PATH default
+        "invocation": sys.argv[0],
+        "currentKey": (
+            None
+            if sys.argv[0] in {"-c", "", "-"} or sys.argv[0].endswith("/__main__.py")
+            else current_key_executable(prefer_environment=False)
+        ),
+        "pythonExecutable": sys.executable,
+        "modulePath": str(Path(__file__).resolve().parents[1]),
+        "clavisKey": os.environ.get("CLAVIS_KEY"),
+        "userUnits": units,
+        "keyboardRules": resources,  # highest precedence first
+        "sourceManifest": "/usr/local/share/key-cli/install-manifest.json"
+        if Path("/usr/local/share/key-cli/install-manifest.json").is_file()
+        else None,
+        "developmentManifest": str(config / "systemd/user/key-cli-development.json")
+        if (config / "systemd/user/key-cli-development.json").is_file()
+        else None,
+    }
 
 
 def run(args) -> Result:
@@ -106,7 +168,7 @@ def run(args) -> Result:
         "missing": missing,
         "keyboard": keyboard,
         "clipboard": {"watcherRunning": watching, "services": services},
-        "installation": {"keyPath": shutil.which("key"), "overrides": overrides},
+        "installation": {**installation_details(), "overrides": overrides},
         "runtimeReady": runtime_ready,
     }
     text = "key dependencies (not runtime readiness): " + (

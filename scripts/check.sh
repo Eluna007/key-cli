@@ -36,7 +36,11 @@ git -C "${repo_root}" diff --check
 "${ruff_command[@]}" format --check "${repo_root}"
 "${ruff_command[@]}" check "${repo_root}"
 "${python_bin}" -m compileall -q "${repo_root}/src"
-"${python_bin}" -m pytest
+PYTHONPATH="${repo_root}/src${PYTHONPATH:+:${PYTHONPATH}}" "${python_bin}" -m pytest
+
+if [[ "${1:-}" != "--build" ]]; then
+    exit 0
+fi
 
 wheel_dir=$(mktemp -d "${TMPDIR:-/tmp}/key-cli-wheel.XXXXXX")
 cleanup() {
@@ -51,3 +55,5 @@ if [[ -z "${wheel_path}" ]]; then
     exit 1
 fi
 "${python_bin}" "${repo_root}/scripts/check-wheel.py" "${wheel_path}"
+
+"${python_bin}" "${repo_root}/scripts/check-installation.py" "${wheel_path}"

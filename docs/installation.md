@@ -1,91 +1,180 @@
-# Installation and independent lifecycles
+# Development and source installation
 
-The Arch split build produces:
+These workflows target Linux/Python 3.10+. Distribution packaging is a future release
+channel; the retained Arch scripts are references, not a development prerequisite.
+Ubuntu/Fedora and native dependency builds have not been validated end to end.
 
-- **key-cli**: Python CLI, keyboard backend, clipboard backend, fish completion and
-  `/usr/lib/systemd/user/clavis-clipboard.service`. Runtime dependencies include
-  python-evdev, python-pyudev, cliphist and wl-clipboard.
-- **key-cli-keyboard-access** (optional):
-  `/usr/lib/udev/rules.d/71-clavis-keyboard-leds.rules`. This grants the active local
-  session access to LED-capable evdev keyboard nodes. The permission covers raw
-  keyboard input, not just LED state; installing this package is an explicit opt-in.
-
-Neither package enables or starts services. There is no root keyboard daemon, shared
-`key daemon`, keyboard systemd unit, periodic status query, or polling fallback.
-Quickshell owns one `key keyboard watch --format jsonl` child process; the clipboard
-watcher has a separate systemd user lifecycle and survives shell restarts.
-
-## Build and select packages
-
-Install Arch build prerequisites yourself: base-devel, python-build, python-installer,
-python-setuptools, python-wheel, python-pytest, python-evdev and python-pyudev.
-Run `scripts/build-packages.sh` from the checkout. It snapshots tracked and unignored
-files, including local edits, into a temporary directory and runs makepkg there.
-It does not install packages. The PKGBUILD accepts this local archive (checksum SKIP);
-for a published release use a fixed release archive and its verified checksum.
-
-Use `sudo pacman -U /path/to/key-cli-0.2.0-1-any.pkg.tar.zst` with the **exact main package file**.
-Optionally install the exact `key-cli-keyboard-access` package file separately. Avoid a
-wildcard covering both packages when choosing not to grant keyboard access.
-Package files remain in the temporary build directory reported by the script.
-Repeated installation/upgrades use pacman ownership, not file copies or `--overwrite`.
-The Python wheel only carries Python code and the key entry point; system resources
-are installed by the distribution packages. A pip/venv installation alone does not
-install or enable the systemd unit or udev rule.
-
-## Existing installations
-
-Before installing, inspect `command -v key`, `pacman -Qo /path/to/key`,
-`systemctl --user cat clavis-clipboard.service` and
-`/etc/udev/rules.d/71-clavis-keyboard-leds.rules`. An administrator rule in `/etc`
-overrides the same-named package rule in `/usr/lib`; a user unit can override the
-packaged unit. `key doctor --json` reports known overrides and its resolved key path.
-Identify whether old files came from pip, a manual installation or another package;
-back up and remove them through their owner only after reviewing them. Do not use
-blanket overwrite/delete commands. In particular, removing the optional package
-cannot revoke an independently installed rule in `/etc`.
-
-## Enable only the desired features
-
-For keyboard access, Arch's udev package hooks reload installed rules. To apply the
-rule to existing devices now, run these commands yourself in an active local session:
+## Editable development
 
 ```bash
-sudo udevadm control --reload-rules
-sudo udevadm trigger --action=change --subsystem-match=input
-sudo udevadm settle
-key keyboard status --format json
+python3 -m venv .venv
+.venv/bin/python -m pip install -e '.[dev]'
 ```
 
-`available: true` confirms LED devices are readable. Permission failures remain
-explicit errors; moving the backend to key-cli does not remove the permission need.
-Enable Caps/Num Lock OSD in Clavis Keystone settings. Reload the shell after switching
-from the old native module so it starts the new singleton subscriber.
-
-Clipboard capture is separately opt-in and requires an active `niri.service`:
+In fish, optionally run `fish_add_path --universal --move ~/Projects/key-cli/.venv/bin`.
+This affects all environment commands, including Python/pip. The tool also prints a
+command with the actual checkout path. It never writes fish configuration.
+Ordinary Python edits affect new processes immediately. Metadata/dependency changes
+need another editable install; running processes do not hot-reload. Recreate the venv
+if the checkout moves or Python upgrades invalidate it.
 
 ```bash
-systemctl --user is-active niri.service
+./scripts/install.sh --dev-services enable
 systemctl --user daemon-reload
-systemctl --user enable --now clavis-clipboard.service
-key clipboard status --format json
 ```
 
-`key doctor --json` distinguishes executable dependencies from keyboard availability,
-clipboard watcher presence and active user units. `runtimeReady` is false if either
-optional feature is not running; this is not a reason to enable a feature you do not want.
-The existing doctor exit code continues to describe missing executable dependencies.
+This writes `80-key-cli-development.conf` under the clipboard unit's user drop-in
+directory. It resets ExecStart to this checkout's absolute `.venv/bin/key clipboard watch`.
+If no loaded base unit exists, it deploys the existing repository unit into the user's
+unit directory. It does not replace someone else's base unit.
 
-## Stop, revoke or uninstall
+For Clavis, whose lifecycle remains owned by the Clavis repository:
 
-Stop clipboard capture independently:
-`systemctl --user disable --now clavis-clipboard.service`.
-Stop the keyboard subscriber by stopping its owning shell before revoking access.
-Remove `key-cli-keyboard-access` using pacman to withdraw the packaged rule. Existing
-ACLs and open file descriptors are not automatically revoked by deleting a rule;
-check for administrator overrides, reload rules, then log out and reconnect devices
-(or reboot) before treating access as revoked. Verify device ACLs after logging in again.
+```bash
+./scripts/install.sh --dev-services enable --clavis-unit ~/Projects/clavis/packaging/systemd/user/clavis-shell.service
+```
 
-Before removing the main package, stop the clipboard service and keyboard subscriber.
-Uninstall/reinstall must preserve cliphist history and `$XDG_CONFIG_HOME/key/clipboard.json`.
-No package uninstall hook removes user data or alters other users' services.
+If the Clavis base unit is not installed, follow the printed `systemctl --user link`
+command, which links Clavis's existing unit. The generated drop-in invokes
+`.venv/bin/key shell --foreground --no-duplicate`. No fish subprocess or activation
+script is involved. `key shell` supplies CLAVIS_KEY automatically. Direct `qs` launches
+still require explicitly selecting CLAVIS_KEY. Clipboard callbacks use their current key.
+
+After configuration, activate clipboard only when wanted:
+
+```bash
+./scripts/install.sh --clipboard enable
+```
+
+This checks active niri.service before `enable --now`; it never starts niri. To switch
+an already running watcher after code changes, explicitly use
+`systemctl --user restart clavis-clipboard.service`. The existing singleton lock prevents
+duplicate capture; no pkill is used. Clavis restart remains your separate choice.
+Clipboard capture survives Shell restarts.
+
+```bash
+./scripts/install.sh --dev-services disable
+systemctl --user daemon-reload
+```
+
+Only manifest-owned, unchanged files are removed. Other user drop-ins remain. If this
+tool supplied the only clipboard base unit, install a source/distribution unit before
+restarting capture. A separately linked Clavis base unit remains Clavis-owned. Review
+fish PATH and restart selected processes to return to the installed version; no whole
+fish_user_paths or unit directory is cleared.
+
+## Source install, update and uninstall
+
+```bash
+./scripts/install.sh
+```
+
+Run as the desktop user, not `sudo ./scripts/install.sh`. The tool creates a temporary
+build environment, resolves/builds wheels as the user, then elevates only deployment.
+It uses a fresh no-cache build of this checkout, including same-version edits. It never
+executes source builds as root or uses --break-system-packages. Install Python with
+venv/ensurepip support first; native evdev builds may require a compiler, Python headers
+and Linux input headers. Missing external feature commands are reported separately.
+No distribution dependency installation is automated.
+
+The final venv is created at its final path; it is neither editable nor moved from a
+temporary directory. Root-owned runtime files are installed with non-writable modes
+for other users. The CLI and all watchers still run as the desktop user.
+
+| Resource | Default location |
+| --- | --- |
+| Dedicated environment | `/usr/local/lib/key-cli/venv/` |
+| Stable entry symlink | `/usr/local/bin/key` |
+| Clipboard base unit | `/usr/local/lib/systemd/user/clavis-clipboard.service` |
+| Fish completion | `/usr/local/share/fish/vendor_completions.d/key.fish` |
+| Installer, uninstaller and resource sources | `/usr/local/share/key-cli/` |
+| Program ownership manifest | `/usr/local/share/key-cli/install-manifest.json` |
+| Independent authorization manifest | `/usr/local/share/key-cli/keyboard-manifest.json` |
+| Optional rule | `/etc/udev/rules.d/71-clavis-keyboard-leds.rules` |
+| Development ownership manifest | `$XDG_CONFIG_HOME/systemd/user/key-cli-development.json` (default `~/.config`) |
+
+Update by rerunning `./scripts/install.sh`. It recreates only its owned venv after wheels are ready and installs those fresh wheels,
+without restarting anything or reasking optional choices. Dependency build failure
+leaves the current installation intact. Deployment failure returns nonzero and names
+the failed step; a partial deployment may remain. There is no automatic rollback or
+version-slot system. Retry after inspecting the manifest and resolving the error.
+
+Uninstall as the ordinary user:
+
+```bash
+./scripts/uninstall.sh
+```
+
+After removing the checkout:
+
+```bash
+/usr/local/share/key-cli/uninstall.sh
+```
+
+Stop the selected clipboard watcher first if it uses the installation being removed:
+`systemctl --user disable --now clavis-clipboard.service`. Neither uninstall nor update
+stops ongoing recordings, Shell or other processes automatically. After removal run
+`systemctl --user daemon-reload`. Programs already running may still hold loaded code.
+
+Manifests record fixed allowed paths, hashes/link targets, root, mode and program
+version. Unknown collisions and modified resources are preserved and reported. Paths
+outside the allowed layout and symlink parents are rejected. The dedicated venv is
+managed as one program directory; shared directories are never recursively removed.
+Uninstall preserves clipboard history, user config, recordings and optional authorization.
+`--root /absolute/test-root` is available for isolated deployment testing, not a relocatable
+DESTDIR image: generated venv paths reference that final test root.
+
+## Optional authorization
+
+This is independent of source program installation and works from an editable checkout:
+
+```bash
+./scripts/install.sh --keyboard enable --acknowledge-keyboard-access --apply
+```
+
+The acknowledgement grants the active user's processes access to the **whole keyboard
+event device**, including raw input, not only LEDs or Clavis. No input-group membership,
+chmod 666, root daemon or polling fallback is added. Without `--apply`, devices are not
+reloaded/triggered. With it, reload/trigger occurs only for newly written/changed rules.
+Existing equivalent external rules are retained without copying or adopting them;
+different rules or masks require manual review. Ordinary code upgrades do not touch rules.
+
+```bash
+./scripts/install.sh --keyboard disable
+```
+
+Or after deleting the checkout:
+
+```bash
+python3 /usr/local/share/key-cli/installer.py --keyboard disable
+```
+
+Revoke before uninstalling the saved tool if you want to remove both. Deleting this
+persistent rule does not immediately remove current ACLs or already open descriptors.
+Other rules/input-group membership may still grant access. Stop the owning subscriber
+when appropriate, reload rules, reconnect the device and relogin (or reboot), then check
+`getfacl /dev/input/eventN` for the actual keyboard node and `key keyboard status --format json`.
+Do not treat removal as a universal ACL revocation.
+
+## Existing installations and diagnostics
+
+Start with `key doctor --json`, `type -a key` and
+`systemctl --user cat clavis-clipboard.service clavis-shell.service`.
+Doctor separately reports invocation, resolved current key, Python interpreter, actual
+module path, PATH default, inherited CLAVIS_KEY, effective unit paths/drop-ins/ExecStart,
+and known rule precedence. Its inherited CLAVIS_KEY is not an inspection of another
+running Shell's environment. `runtimeReady=false` can mean optional features are off;
+the existing exit-code/dependency contract is preserved.
+
+`/usr/local/bin/key` can coexist with pacman's `/usr/bin/key`; PATH and user drop-ins
+select which runs. Use `pacman -Qo /usr/bin/key` on Arch to identify ownership. Never
+manually overwrite/delete package-owned files. Existing keyboard access packages may
+stay installed: equivalent `/usr/lib/udev/rules.d` authorization is not duplicated in
+`/etc`. Same-name rules in `/etc` override `/run`, `/usr/local/lib`, then `/usr/lib`.
+User units override system units; `/usr/local/lib/systemd/user` takes precedence over
+`/usr/lib/systemd/user`, but user drop-ins can still change ExecStart.
+
+This implementation detects collisions; it does not remove any previous installation.
+Review unidentified manual files and user edits yourself. To switch from development,
+withdraw generated overrides, review fish PATH, reload user units and explicitly restart
+only selected processes. No system package removal is required to begin development.

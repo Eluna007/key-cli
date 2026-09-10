@@ -32,17 +32,16 @@ being reviewed.
 
 ## Developer workflow
 
-Install the declared development tools in a virtual environment:
-
-```bash
-python -m pip install -e '.[dev]'
-ruff format --check .
-ruff check .
-python -m compileall src
-python -m pytest
-python -m build --wheel
-scripts/check.sh
-```
+Use `.venv` with `python3 -m venv .venv` and
+`.venv/bin/python -m pip install -e '.[dev]'`. Ordinary source edits need no reinstall;
+metadata changes do, and existing watchers require an explicit restart.
+`scripts/check.sh` runs daily quality/tests; `scripts/check.sh --build` adds wheel/install
+verification. Do not run the same checks separately before that entry point.
+Source deployment uses `scripts/install.sh` / `scripts/uninstall.sh`, a dedicated venv
+and /usr/local. Development service overrides and optional keyboard authorization have
+independent opt-in lifecycles. Arch scripts are future packaging references, never a
+prerequisite for development or source installation. Do not silently modify fish,
+permissions or user services. Installer tests use temporary roots and mock system tools.
 
 `ruff format` is the formatter; do not add Black, isort or flake8. Do not add mypy,
 pyright, coverage thresholds or a large pre-commit framework in routine cleanup.

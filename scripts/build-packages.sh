@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+# Future Arch packaging reference; use scripts/install.sh for source installation.
 repo_root=$(git -C "$(dirname -- "${BASH_SOURCE[0]}")" rev-parse --show-toplevel)
 package_dir=$(mktemp -d "${TMPDIR:-/tmp}/key-cli-packages.XXXXXX")
 python3 - "${repo_root}" "${package_dir}" <<'PY'
