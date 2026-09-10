@@ -181,6 +181,11 @@ repeated status queries and exit when the session becomes idle or terminal. See 
 [recording subscription protocol](docs/protocol.md#recording-subscriptions) for snapshot,
 ordering, process-exit and error semantics.
 
+Use `key file reveal /absolute/path --format json` to find a saved recording, or
+`key file open /absolute/path --format json` to open it with its default application.
+Yazi is launched through `xdg-terminal-exec`; Dolphin and Nautilus can select the file.
+Other managers open its parent directory. See [file actions](docs/protocol.md#saved-file-actions).
+
 ## Dependencies and troubleshooting
 
 | Feature | Runtime dependencies |

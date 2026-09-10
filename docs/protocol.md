@@ -227,3 +227,25 @@ must preserve their session state. Ctrl-C exits 130, diagnostics go to stderr an
 closed output pipe exits cleanly. The watcher is session-scoped and is not a daemon;
 it does not discover future sessions after exiting idle. A shell may query status once
 at initialization, then subscribe when its command response establishes an active session.
+
+## Saved-file actions
+
+`key file reveal /absolute/path --format json` and `key file open /absolute/path --format json`
+return the standard schemaVersion 1 envelope (`file.reveal` / `file.open`). They never change
+recording state, create a missing file, or start a watcher. Successful dispatch includes
+`path`, `fileExists`, and `mode` (`reveal`, `directory`, or `open`). Dispatch means the
+launcher was started, not proof that a window appeared or received focus; later application
+errors are outside this one-shot interface. Existing activation environment is inherited.
+
+Reveal queries `xdg-mime` for the default `inode/directory` application and reads its desktop
+entry using XDG data-directory precedence. Standard Yazi entries use `xdg-terminal-exec --
+yazi -- PATH`; standard Dolphin and Nautilus entries use their `--select` interface. Custom
+launchers and other applications fall back to opening the parent directory with `xdg-open`,
+wrapped in `xdg-terminal-exec` for `Terminal=true`. No unrelated FileManager1 service is
+activated in place of the user's chosen default. `mode: directory` does not promise selection.
+
+If a file is missing but its parent exists, reveal opens the parent with `fileExists: false`.
+Open uses `xdg-open` on the exact existing file. Relative paths are rejected (exit 2), missing
+executables return exit 3, and missing paths, invalid desktop configuration, query timeout or
+launch errors return exit 5. Paths are passed as individual arguments, never shell source.
+`xdg-utils` is required; terminal file managers additionally require `xdg-terminal-exec`.

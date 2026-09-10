@@ -29,7 +29,9 @@ package_key-cli() {
     optdepends=('key-cli-keyboard-access: grant active local users keyboard device access'
                 'quickshell: Clavis shell and IPC' 'gpu-screen-recorder: screen recording'
                 'ffmpeg: audio and GIF processing' 'libpulse: audio source discovery'
-                'slurp: region selection')
+                'slurp: region selection'
+                'xdg-utils: open saved files and query the default file manager'
+                'xdg-terminal-exec: launch terminal file managers such as Yazi')
     cd "${srcdir}/key-cli-${pkgver}"
     python -m installer --destdir="${pkgdir}" --prefix=/usr dist/*.whl
     install -Dm644 systemd/user/clavis-clipboard.service "${pkgdir}/usr/lib/systemd/user/clavis-clipboard.service"

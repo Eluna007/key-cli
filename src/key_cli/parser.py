@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 
 from .commands.audio import run as audio
+from .commands.file import run as file_action
 from .commands.clipboard import run as clipboard
 from .commands.doctor import run as doctor
 from .commands.keyboard import run as keyboard
@@ -51,6 +52,14 @@ def build_parser() -> argparse.ArgumentParser:
     ipc_parser.add_argument("target", nargs="?")
     ipc_parser.add_argument("method", nargs="?")
     ipc_parser.add_argument("arguments", nargs=argparse.REMAINDER)
+
+    file_parser = commands.add_parser("file", help="open or reveal a saved file")
+    file_commands = file_parser.add_subparsers(dest="action", required=True)
+    for action in ("open", "reveal"):
+        sub = file_commands.add_parser(action, help=f"{action} a local file")
+        sub.add_argument("path", help="absolute local file path")
+        sub.add_argument("--format", choices=["json"], default="json")
+    file_parser.set_defaults(handler=file_action)
 
     record_parser = commands.add_parser("record", help="record the screen with gpu-screen-recorder")
     record_commands = record_parser.add_subparsers(dest="action", required=True)
