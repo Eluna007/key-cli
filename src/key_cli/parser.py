@@ -5,6 +5,7 @@ import argparse
 from .commands.audio import run as audio
 from .commands.clipboard import run as clipboard
 from .commands.doctor import run as doctor
+from .commands.keyboard import run as keyboard
 from .commands.ipc import run as ipc
 from .commands.record import run as record
 from .commands.shell import run as shell
@@ -115,6 +116,15 @@ def build_parser() -> argparse.ArgumentParser:
         sub.add_argument("--format", choices=["json"], default=None)
         sub.add_argument("--json", action="store_true")
     clipboard_parser.set_defaults(handler=clipboard)
+
+    keyboard_parser = commands.add_parser("keyboard", help="monitor keyboard lock LEDs")
+    keyboard_parser.set_defaults(handler=keyboard)
+    keyboard_commands = keyboard_parser.add_subparsers(dest="action", required=True)
+    status = keyboard_commands.add_parser("status", help="read current LED state")
+    status.add_argument("--format", choices=["json"], default=None)
+    status.add_argument("--json", action="store_true")
+    watch = keyboard_commands.add_parser("watch", help="stream LED state changes without polling")
+    watch.add_argument("--format", choices=["jsonl"], default="jsonl")
 
     doctor_parser = commands.add_parser("doctor", help="check key runtime dependencies")
     doctor_parser.set_defaults(handler=doctor)

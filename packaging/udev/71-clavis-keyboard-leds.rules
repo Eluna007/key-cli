@@ -1,0 +1,3 @@
+# Opt-in access to the entire evdev keyboard node, not LED-only permission.
+# The nonempty match also requires capabilities/led to exist on the same parent.
+SUBSYSTEM=="input", KERNEL=="event*", ENV{ID_INPUT_KEYBOARD}=="1", ATTRS{capabilities/led}=="?*", ATTRS{capabilities/led}!="0", TAG+="uaccess"

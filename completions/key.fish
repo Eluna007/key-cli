@@ -20,3 +20,8 @@ complete -c key -f -n '__fish_seen_subcommand_from clipboard' -l format -a json 
 
 complete -c key -f -n '__fish_seen_subcommand_from clipboard; and __fish_seen_subcommand_from config' -l max-items -x -a '50 100 150 200 250 300 350 400 450 500 550 600 650 700 750' -d 'Saved history limit; trims on next save'
 complete -c key -f -n '__fish_seen_subcommand_from clipboard; and __fish_seen_subcommand_from list' -l limit -x -d 'Maximum entries to return (1–750)'
+
+complete -c key -f -n '__fish_use_subcommand' -a keyboard -d 'keyboard lock LED state'
+complete -c key -f -n '__fish_seen_subcommand_from keyboard' -a 'status watch'
+complete -c key -f -n '__fish_seen_subcommand_from keyboard; and __fish_seen_subcommand_from status' -l format -a json
+complete -c key -f -n '__fish_seen_subcommand_from keyboard; and __fish_seen_subcommand_from watch' -l format -a jsonl

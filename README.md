@@ -2,7 +2,7 @@
 
 The command-line companion for [Clavis Shell](https://github.com/StatIndet/quickshell).
 
-`key-cli` installs the `key` command and provides shell lifecycle/IPC, screen recording, audio recording and clipboard integration.
+`key-cli` installs the `key` command and provides shell lifecycle/IPC, screen recording, audio recording, clipboard integration and keyboard LED events.
 
 ## Project family
 
@@ -12,6 +12,8 @@ The command-line companion for [Clavis Shell](https://github.com/StatIndet/quick
 | **[key-cli](https://github.com/StatIndet/key-cli)** | `key` command and discrete system tasks |
 | **[keytop](https://github.com/StatIndet/keytop)** | Standalone system monitor, TUI and metrics stream |
 
+Install the main package and optionally the keyboard authorization package using [installation instructions](docs/installation.md). Neither package automatically enables clipboard capture.
+
 ## Commands
 
 ```text
@@ -20,6 +22,7 @@ key ipc
 key record
 key audio
 key clipboard
+key keyboard
 key doctor
 key version
 ```
@@ -75,11 +78,11 @@ key clipboard clear --format json
 Requires Python 3.10 or newer.
 
 ```bash
-python -m build --wheel
-sudo python -m installer dist/*.whl
+python -m venv .venv
+.venv/bin/python -m pip install .
 ```
 
-The package also installs the Clavis clipboard watcher user service. Enable it with:
+The Arch main package installs the Clavis clipboard watcher user service; the Python wheel does not. After installing the system package, enable capture explicitly with:
 
 ```bash
 systemctl --user daemon-reload
@@ -122,7 +125,7 @@ scripts/check.sh
 
 The machine-facing JSON contract is documented in [`docs/protocol.md`](docs/protocol.md).
 `scripts/check.sh` is the single local quality gate; it runs Ruff, `compileall`, pytest,
-wheel creation and a check that the packaged clipboard service is present. It does not
+wheel creation and a check that Python code is present and system resources stay outside the wheel. It does not
 install system files or start services.
 
 ## License

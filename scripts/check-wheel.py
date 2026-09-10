@@ -30,12 +30,10 @@ def main() -> int:
         if b"key = key_cli:main" not in archive.read(entry_points):
             raise SystemExit("wheel entry point does not expose key_cli:main")
 
-        service_suffixes = (
-            ".data/data/lib/systemd/user/clavis-clipboard.service",
-            ".data/data/systemd/user/clavis-clipboard.service",
-        )
-        if not any(name.endswith(service_suffixes) for name in names):
-            raise SystemExit("wheel does not contain clavis-clipboard.service")
+        if any("/systemd/" in name or "/udev/" in name for name in names):
+            raise SystemExit("system resources belong to distribution packages, not the wheel")
+        if "key_cli/keyboard/backend.py" not in names:
+            raise SystemExit("wheel is missing the keyboard backend")
 
     print(f"wheel package check passed: {wheel.name}")
     return 0

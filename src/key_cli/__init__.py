@@ -25,6 +25,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 0
     try:
         result = args.handler(args)
+        if isinstance(result, int):
+            return result
         json_requested = getattr(args, "json", False) or getattr(args, "format", None) == "json"
         return emit_result(result, json_requested)
     except BrokenPipeError:

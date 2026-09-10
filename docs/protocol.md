@@ -156,3 +156,36 @@ The process exit code is part of the contract:
 
 The JSON `ok` value and the exit code must agree. Dependency and state errors still return
 the standard envelope so callers can report a useful error without parsing human text.
+
+## Keyboard LED state
+
+`key keyboard status --format json` returns one envelope. `key keyboard watch --format jsonl`
+flushes an initial envelope, then emits only state/availability or device snapshot events.
+Each line uses `schemaVersion: 1`, `command: keyboard.watch` (or `keyboard.status`),
+`ok`, `error`, `event`, `available`, `capsLock`, and `numLock`.
+
+```json
+{"schemaVersion":1,"command":"keyboard.watch","ok":true,"event":"snapshot","available":true,"capsLock":false,"numLock":true,"error":null}
+```
+
+- `snapshot`: startup, topology/permission rescan, lost-frame recovery. Update the UI
+  baseline without announcing a toggle. Recovery is always a fresh baseline.
+- `changed`: a normal LED state change. OSD may announce it according to user settings.
+- Unavailable: `ok: false`, `available: false`, both lock values `null`, structured
+  `error` (`code`, `message`, optional `details`). Unknown must not be presented as off.
+- No heartbeat or inactivity deadline. A quiet stream is healthy. Device permission
+  failures keep watch waiting for udev recovery. Fatal initialization errors emit one
+  unavailable snapshot and exit. EOF is unavailable; a new process starts with a snapshot.
+
+Values aggregate LED states across keyboards using OR. EV_KEY is never interpreted as
+lock state and ordinary keys are never output. SYN_DROPPED discards events until SYN_REPORT,
+then reads authoritative LEDs. No sysfs polling fallback or clipboard side effects.
+`status` returns 0 if available, 3 for missing Python dependencies, 5 for unavailable devices
+or monitor errors. `watch` uses 3/5 for fatal errors, 130 for Ctrl-C, and exits cleanly on a
+closed output pipe. A recoverable unavailable message does not terminate watch.
+
+Doctor adds `keyboard` (the status envelope), `clipboard.watcherRunning`,
+`clipboard.services`, `installation.keyPath`, `installation.overrides`, and `runtimeReady`.
+Existing `features.clipboard-watch` and exit codes still describe executable dependencies;
+`features.keyboard` includes actual device availability. Runtime readiness is separate from
+whether a user chooses to enable capture or grant keyboard access.
