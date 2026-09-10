@@ -68,6 +68,8 @@ def build_parser() -> argparse.ArgumentParser:
         if action == "stop":
             sub.add_argument("--clipboard", action="store_true", help="copy the completed file URI")
         _json(sub)
+    watch = record_commands.add_parser("watch", help="subscribe to recording state changes")
+    watch.add_argument("--format", choices=["jsonl"], default="jsonl")
     record_parser.set_defaults(handler=record)
 
     audio_parser = commands.add_parser("audio", help="record a microphone or system audio file")
@@ -79,6 +81,8 @@ def build_parser() -> argparse.ArgumentParser:
     for action in ("status", "stop"):
         sub = audio_commands.add_parser(action, help=f"{action} the audio recording")
         _json(sub)
+    watch = audio_commands.add_parser("watch", help="subscribe to recording state changes")
+    watch.add_argument("--format", choices=["jsonl"], default="jsonl")
     audio_parser.set_defaults(handler=audio)
 
     clipboard_parser = commands.add_parser(

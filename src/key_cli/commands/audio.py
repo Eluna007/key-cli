@@ -116,7 +116,11 @@ def resolve_source(source_type: str) -> tuple[dict | None, dict | None]:
     }, None
 
 
-def run(args) -> Result:
+def run(args) -> Result | int:
+    if args.action == "watch":
+        from ..recording.watch import run as watch
+
+        return watch("audio")
     try:
         with locked("audio"):
             if args.action == "start":

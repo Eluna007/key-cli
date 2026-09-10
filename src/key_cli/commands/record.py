@@ -106,7 +106,11 @@ def _convert_gif(temporary: Path, output: Path, fps: int) -> tuple[bool, str]:
     return True, ""
 
 
-def run(args) -> Result:
+def run(args) -> Result | int:
+    if args.action == "watch":
+        from ..recording.watch import run as watch
+
+        return watch("record")
     try:
         with locked("record"):
             if args.action == "start":

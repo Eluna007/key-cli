@@ -12,10 +12,10 @@ complete -c key -f -n '__fish_seen_subcommand_from shell' -l log -s l -d 'print 
 complete -c key -f -n '__fish_seen_subcommand_from shell' -l show -s s -d 'show IPC methods'
 
 complete -c key -f -n '__fish_seen_subcommand_from ipc' -a 'show list call'
-complete -c key -f -n '__fish_seen_subcommand_from record' -a 'start status stop pause resume'
-complete -c key -f -n '__fish_seen_subcommand_from audio' -a 'start status stop'
+complete -c key -f -n '__fish_seen_subcommand_from record' -a 'start status stop pause resume watch'
+complete -c key -f -n '__fish_seen_subcommand_from audio' -a 'start status stop watch'
 complete -c key -f -n '__fish_seen_subcommand_from clipboard' -a 'list inspect restore delete clear status config'
-complete -c key -f -n '__fish_seen_subcommand_from record audio' -l json -d 'write JSON'
+complete -c key -f -n '__fish_seen_subcommand_from record audio; and not __fish_seen_subcommand_from watch' -l json -d 'write JSON'
 complete -c key -f -n '__fish_seen_subcommand_from clipboard' -l format -a json -d 'JSON response'
 
 complete -c key -f -n '__fish_seen_subcommand_from clipboard; and __fish_seen_subcommand_from config' -l max-items -x -a '50 100 150 200 250 300 350 400 450 500 550 600 650 700 750' -d 'Saved history limit; trims on next save'
@@ -24,4 +24,4 @@ complete -c key -f -n '__fish_seen_subcommand_from clipboard; and __fish_seen_su
 complete -c key -f -n '__fish_use_subcommand' -a keyboard -d 'keyboard lock LED state'
 complete -c key -f -n '__fish_seen_subcommand_from keyboard' -a 'status watch'
 complete -c key -f -n '__fish_seen_subcommand_from keyboard; and __fish_seen_subcommand_from status' -l format -a json
-complete -c key -f -n '__fish_seen_subcommand_from keyboard; and __fish_seen_subcommand_from watch' -l format -a jsonl
+complete -c key -f -n '__fish_seen_subcommand_from keyboard record audio; and __fish_seen_subcommand_from watch' -l format -a jsonl

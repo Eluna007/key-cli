@@ -26,8 +26,8 @@ The stable command names currently exposed by JSON responses are:
 - `version` and `doctor` for metadata and dependency diagnostics;
 - `shell.start`, `shell.kill`, `shell.log` and `shell.ipc` for Quickshell lifecycle actions;
 - `ipc.show` and `ipc.call` for public Quickshell IPC forwarding;
-- `record.start`, `record.status`, `record.pause`, `record.resume` and `record.stop`;
-- `audio.start`, `audio.status` and `audio.stop`;
+- `record.start`, `record.status`, `record.pause`, `record.resume`, `record.stop` and `record.watch`;
+- `audio.start`, `audio.status`, `audio.stop` and `audio.watch`;
 - `clipboard.status`, `clipboard.list`, `clipboard.inspect`, `clipboard.restore`,
   `clipboard.delete`, `clipboard.clear`, `clipboard.config`, `clipboard.watch` and `clipboard.store`.
 
@@ -189,3 +189,41 @@ Doctor adds `keyboard` (the status envelope), `clipboard.watcherRunning`,
 Existing `features.clipboard-watch` and exit codes still describe executable dependencies;
 `features.keyboard` includes actual device availability. Runtime readiness is separate from
 whether a user chooses to enable capture or grant keyboard access.
+
+## Recording subscriptions
+
+`key record watch --format jsonl` and `key audio watch --format jsonl` subscribe to
+screen and audio sessions respectively. Each line is a schemaVersion 1 envelope with
+`command: record.watch` / `audio.watch`, `ok`, `error`, all common recording state
+fields, any kind-specific fields (for example `source`, `type`, `target`), and
+`event: snapshot | changed`. An absent session returns the complete idle base state
+with empty session ID and `updatedAtMs: 0`.
+
+The first line is a snapshot, including on reconnect. Subsequent lines carry a full
+state only when the authoritative state changes. Consumers use snapshots as silent
+baselines, and deduplicate command/watch results by `sessionId + updatedAtMs`.
+Every persisted write advances `updatedAtMs` strictly, including across sessions and
+multiple writes in the same millisecond. Older revisions must not replace newer ones.
+Command errors without a complete state are operation failures, not session transitions.
+
+The authoritative files remain `$XDG_RUNTIME_DIR/key/{record,audio}.json`. Linux
+inotify watches their directory for atomic replacement; it supports independent
+subscribers without socket ownership, writer notifications, or extra dependencies.
+Events may coalesce; the next message always reflects the current authoritative file,
+not a durable log of every intermediate state. Writers work without any subscriber.
+There is no periodic status query, stat scan, heartbeat, or polling fallback.
+
+A verified recorder is also monitored with `os.pidfd_open()` and a blocking selector.
+PID, process start ticks, executable and output argument are verified before and after
+opening the pidfd. On exit the watcher blocks on the recording operation lock and
+rereads the file: a normal stop's completed/error result is preserved. Only the same
+still-active session with a missing verified process becomes `recorder_exited`.
+This prevents stop/finalization lock contention from becoming `recording_busy` failure.
+
+Idle and terminal snapshots/changes end the stream with exit 0 (a session error remains
+`ok: false` in its envelope). Missing kernel facilities, corrupt state or other watch
+failures return a state-less `recording_watch_unavailable` envelope and exit 5; consumers
+must preserve their session state. Ctrl-C exits 130, diagnostics go to stderr and a
+closed output pipe exits cleanly. The watcher is session-scoped and is not a daemon;
+it does not discover future sessions after exiting idle. A shell may query status once
+at initialization, then subscribe when its command response establishes an active session.

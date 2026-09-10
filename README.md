@@ -175,6 +175,12 @@ Use `key --help` or `key COMMAND --help` for all options.
 Machine clients should follow the [protocol specification](docs/protocol.md), including
 schema validation, errors and exit codes.
 
+Recording clients can subscribe with `key record watch --format jsonl` or
+`key audio watch --format jsonl`. These session-scoped Linux event streams replace
+repeated status queries and exit when the session becomes idle or terminal. See the
+[recording subscription protocol](docs/protocol.md#recording-subscriptions) for snapshot,
+ordering, process-exit and error semantics.
+
 ## Dependencies and troubleshooting
 
 | Feature | Runtime dependencies |

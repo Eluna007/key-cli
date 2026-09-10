@@ -4,6 +4,7 @@ import fcntl
 import json
 import os
 import tempfile
+import time
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Iterator
@@ -22,13 +23,13 @@ def runtime_dir() -> Path:
 
 
 @contextmanager
-def locked(kind: str) -> Iterator[None]:
+def locked(kind: str, *, blocking: bool = False) -> Iterator[None]:
     directory = runtime_dir()
     lock_path = directory / f"{kind}.lock"
     with lock_path.open("a+") as lock:
         os.chmod(lock_path, 0o600)
         try:
-            fcntl.flock(lock.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+            fcntl.flock(lock.fileno(), fcntl.LOCK_EX | (0 if blocking else fcntl.LOCK_NB))
         except BlockingIOError as exc:
             raise StateError("another key recording operation is in progress") from exc
         try:
@@ -48,7 +49,7 @@ def state_path(kind: str) -> Path:
 def load(kind: str) -> dict[str, Any]:
     path = state_path(kind)
     if not path.exists():
-        return {"schemaVersion": 1, "state": "idle"}
+        return base_state()
     try:
         value = json.loads(path.read_text(encoding="utf-8"))
         if not isinstance(value, dict) or value.get("schemaVersion") != 1:
@@ -61,7 +62,8 @@ def load(kind: str) -> dict[str, Any]:
 def save(kind: str, value: dict[str, Any]) -> None:
     path = state_path(kind)
     path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
-    value = dict(value)
+    # Writers hold the kind operation lock. Keep the caller response in sync.
+    value["updatedAtMs"] = max(int(time.time() * 1000), int(load(kind).get("updatedAtMs") or 0) + 1)
     value["schemaVersion"] = 1
     fd, temporary = tempfile.mkstemp(prefix=f".{kind}.", suffix=".tmp", dir=path.parent)
     try:
