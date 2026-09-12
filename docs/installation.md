@@ -190,4 +190,5 @@ Both `key --version` and the wheel metadata read the single `src/key_cli/VERSION
 After a metadata change, refresh an editable development environment explicitly; existing
 watchers still require a separate restart. The release source/wheel do not depend on Git
 at runtime. `scripts/build-packages.sh` prepares a checksummed local source and PKGBUILD;
-[release workflows](releasing.md) publish immutable source URLs and synchronize AUR.
+[release workflows](releasing.md) publish immutable source URLs and Arch packaging files on
+GitHub. AUR publication is a separate manual step.

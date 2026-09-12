@@ -270,7 +270,7 @@ See [migration and lifecycle details](docs/installation.md).
 
 Arch x86_64 packaging and GitHub Actions release workflows are included. Versions use
 `2026.9.12` (tag `v2026.9.12`), with `.1`, `.2` for further releases on the same day.
-See [release setup and AUR publishing](docs/releasing.md) and the
+See [GitHub release setup](docs/releasing.md) and the
 [dependency inventory](docs/dependencies.md). Each repository remains independently buildable.
 
 AUR packages: `key-cli` and optional `key-cli-keyboard-access`. The existing
