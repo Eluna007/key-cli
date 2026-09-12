@@ -1,12 +1,28 @@
 # key-cli
 
 The command-line companion for [Clavis Shell](https://github.com/StatIndet/quickshell).
-It provides the `key` command for shell lifecycle and IPC, recording, clipboard history,
-and event-driven Caps Lock / Num Lock state.
+It provides the `key` command for shell lifecycle and IPC, screen/audio recording,
+saved-file actions, clipboard history and event-driven Caps Lock / Num Lock state.
 
 Clavis owns the interface; key-cli owns these independent system backends and their
 [JSON/JSONL protocol](docs/protocol.md). [keytop](https://github.com/StatIndet/keytop)
-remains responsible for system metrics.
+provides kernel/system information snapshots and metrics directly to Clavis through
+its own JSONL stream.
+
+## Scope
+
+| Backend | Commands |
+| --- | --- |
+| Shell lifecycle and IPC compatibility | `key shell`, `key ipc` |
+| Screen recording, GIF finalization and session events | `key record` |
+| Microphone/system audio recording and session events | `key audio` |
+| Open or reveal saved files | `key file` |
+| Clipboard capture, history and configuration | `key clipboard` |
+| Caps Lock / Num Lock snapshots and events | `key keyboard` |
+| Runtime diagnostics and version | `key doctor`, `key version` |
+
+Clavis owns the UI and its native weather, media, lyrics and compositor integrations.
+Key-cli does not forward system metrics or implement a second system monitor.
 
 ## Development
 
@@ -163,7 +179,15 @@ keeping the newest records. The query limit is a separate setting.
 
 ## Command reference
 
-Use `key --help` or `key COMMAND --help` for all options.
+Use `key --help` or `key COMMAND --help` for all options. For new Clavis keybindings,
+prefer direct Quickshell IPC; `key ipc` remains available as a compatibility entry:
+
+```bash
+qs -c clavis ipc call sidebar toggle dashboard
+qs -c clavis ipc call sidebar toggle quicksettings
+```
+
+These targets select sidebar content, independently of the configured screen edge.
 
 | Task | Examples |
 | --- | --- |
@@ -172,6 +196,7 @@ Use `key --help` or `key COMMAND --help` for all options.
 | Screen recording | `key record start --target region --type video`, `key record status --json`, `key record stop --json` |
 | Pause / resume recording | `key record pause --json`, `key record resume --json` |
 | Audio recording | `key audio start --source mic --json`, `key audio start --source system --json`, `key audio status --json`, `key audio stop --json` |
+| Saved-file actions | `key file reveal /absolute/path --format json`, `key file open /absolute/path --format json` |
 | Clipboard queries | `key clipboard list --format json --limit 20`, `key clipboard inspect ID --format json` |
 | Clipboard actions | `key clipboard restore ID --format json`, `key clipboard delete ID --format json`, `key clipboard clear --format json` |
 | Keyboard state | `key keyboard status --format json`, `key keyboard watch --format jsonl` |
@@ -197,6 +222,7 @@ Other managers open its parent directory. See [file actions](docs/protocol.md#sa
 | Feature | Runtime dependencies |
 | --- | --- |
 | Shell and IPC | Clavis Shell and Quickshell (`qs`) |
+| Saved-file actions | `xdg-open`, `xdg-mime`, a file manager; `xdg-terminal-exec` for terminal file managers |
 | Keyboard LEDs | Python `evdev`, `pyudev`, and access to the relevant evdev devices |
 | Clipboard | `cliphist`, `wl-copy`, `wl-paste`; capture also requires the watcher |
 | Screen recording | `gpu-screen-recorder`; `slurp` for region selection |
@@ -218,7 +244,8 @@ dependencies, not whether every feature is running.
 ## Checks and removal
 
 ```bash
-scripts/check.sh
+scripts/check.sh         # daily source checks
+# Or, when packaging/install behavior is affected:
 scripts/check.sh --build
 ```
 
