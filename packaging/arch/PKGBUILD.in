@@ -8,6 +8,8 @@ pkgdesc='Clavis command interface, clipboard backend and keyboard events'
 arch=('any')
 url='https://github.com/StatIndet/key-cli'
 license=('GPL-3.0-or-later')
+# Pure Python and udev data contain no ELF debug symbols to split out.
+options=('!debug')
 makedepends=@MAKEDEPENDS@
 checkdepends=@CHECKDEPENDS@
 source=("key-cli-${pkgver}.tar.gz::${url}/releases/download/v${pkgver}/key-cli-${pkgver}.tar.gz")
