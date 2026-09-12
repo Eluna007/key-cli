@@ -16,3 +16,6 @@ compile_commands.json
 __pycache__/
 .pytest_cache/
 .ruff_cache/
+
+# Local packaging and CI artifacts
+.packaging/

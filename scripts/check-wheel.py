@@ -21,6 +21,17 @@ def main() -> int:
         )
         if not dist_info:
             raise SystemExit("wheel has no dist-info metadata")
+        from email.parser import BytesParser
+
+        wheel_metadata = BytesParser().parsebytes(archive.read(f"{dist_info[0]}/METADATA"))
+        expected_version = (
+            (Path(__file__).resolve().parents[1] / "src/key_cli/VERSION").read_text().strip()
+        )
+        if (
+            wheel_metadata["Version"] != expected_version
+            or archive.read("key_cli/VERSION").decode().strip() != expected_version
+        ):
+            raise SystemExit("wheel metadata and runtime version disagree")
         if "key_cli/__init__.py" not in names:
             raise SystemExit("wheel does not contain the key_cli package")
 

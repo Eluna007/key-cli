@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "key-cli"
-version = "0.2.0"
+dynamic = ["version"]
 description = "The stable key command line interface for Clavis"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -26,7 +26,10 @@ package-dir = { "" = "src" }
 where = ["src"]
 
 [tool.setuptools.package-data]
-key_cli = ["py.typed"]
+key_cli = ["py.typed", "VERSION"]
+
+[tool.setuptools.dynamic]
+version = {file = ["src/key_cli/VERSION"]}
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

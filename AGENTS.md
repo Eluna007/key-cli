@@ -39,7 +39,7 @@ metadata changes do, and existing watchers require an explicit restart.
 verification. Do not run the same checks separately before that entry point.
 Source deployment uses `scripts/install.sh` / `scripts/uninstall.sh`, a dedicated venv
 and /usr/local. Development service overrides and optional keyboard authorization have
-independent opt-in lifecycles. Arch scripts are future packaging references, never a
+independent opt-in lifecycles. Arch packaging is an independent release channel, never a
 prerequisite for development or source installation. Do not silently modify fish,
 permissions or user services. Installer tests use temporary roots and mock system tools.
 

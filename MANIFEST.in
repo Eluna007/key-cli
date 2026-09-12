@@ -4,3 +4,7 @@ recursive-include completions *.fish
 recursive-include packaging/udev *.rules
 recursive-include docs *.md
 include AGENTS.md
+
+include src/key_cli/VERSION
+include packaging/dependencies.json
+recursive-include packaging/arch *.in *.install *.hook *.sh

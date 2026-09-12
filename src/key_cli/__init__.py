@@ -5,7 +5,7 @@ from __future__ import annotations
 import sys
 from typing import Sequence
 
-__version__ = "0.2.0"
+from ._version import __version__
 
 from .parser import build_parser
 from .utils.output import emit_result

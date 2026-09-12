@@ -33,6 +33,9 @@ else
 fi
 
 git -C "${repo_root}" diff --check
+mapfile -d '' -t shell_files < <(find scripts packaging -type f \( -name '*.sh' -o -name '*.install' -o -name 'PKGBUILD.in' \) -print0)
+for file in "${shell_files[@]}"; do bash -n "$file"; done
+shellcheck -s bash -x "${shell_files[@]}"
 "${ruff_command[@]}" format --check "${repo_root}"
 "${ruff_command[@]}" check "${repo_root}"
 "${python_bin}" -m compileall -q "${repo_root}/src"

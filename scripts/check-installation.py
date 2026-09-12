@@ -56,6 +56,7 @@ def main():
                 "__pycache__",
                 ".pytest_cache",
                 ".ruff_cache",
+                ".packaging",
             ),
         )
         init = checkout / "src/key_cli/__init__.py"

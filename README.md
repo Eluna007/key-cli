@@ -265,6 +265,17 @@ Review other rules and input-group membership, reconnect devices and log in agai
 reboot), then verify access. User history, settings and recordings are never removed.
 See [migration and lifecycle details](docs/installation.md).
 
+
+## Arch packages and date releases
+
+Arch x86_64 packaging and GitHub Actions release workflows are included. Versions use
+`2026.9.12` (tag `v2026.9.12`), with `.1`, `.2` for further releases on the same day.
+See [release setup and AUR publishing](docs/releasing.md) and the
+[dependency inventory](docs/dependencies.md). Each repository remains independently buildable.
+
+AUR packages: `key-cli` and optional `key-cli-keyboard-access`. The existing
+[source installer](docs/installation.md) remains available and independent of Arch packaging.
+
 ## License
 
 [GPL-3.0-or-later](LICENSE).

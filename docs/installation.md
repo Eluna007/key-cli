@@ -1,7 +1,7 @@
 # Development and source installation
 
-These workflows target Linux/Python 3.10+. Distribution packaging is a future release
-channel; the retained Arch scripts are references, not a development prerequisite.
+These workflows target Linux/Python 3.10+. Arch packages and date releases are an independent distribution channel; see
+[release setup](releasing.md) and [dependencies](dependencies.md). They are not a development prerequisite.
 Ubuntu/Fedora and native dependency builds have not been validated end to end.
 
 ## Editable development
@@ -178,3 +178,16 @@ This implementation detects collisions; it does not remove any previous installa
 Review unidentified manual files and user edits yourself. To switch from development,
 withdraw generated overrides, review fish PATH, reload user units and explicitly restart
 only selected processes. No system package removal is required to begin development.
+
+## Arch packages
+
+`key-cli` installs into `/usr` using the system Python and declares `python-evdev`,
+`python-pyudev`, `cliphist` and `wl-clipboard` dependencies. The optional
+`key-cli-keyboard-access` split package supplies the existing uaccess rule. It is not a
+base-package dependency. Neither package enables or starts a user service.
+
+Both `key --version` and the wheel metadata read the single `src/key_cli/VERSION` resource.
+After a metadata change, refresh an editable development environment explicitly; existing
+watchers still require a separate restart. The release source/wheel do not depend on Git
+at runtime. `scripts/build-packages.sh` prepares a checksummed local source and PKGBUILD;
+[release workflows](releasing.md) publish immutable source URLs and synchronize AUR.
