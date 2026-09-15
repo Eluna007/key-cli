@@ -66,7 +66,7 @@ def isolated_desktop(tmp_path, monkeypatch):
         "import json,os,sys,time\n"
         "from pathlib import Path\n"
         "root=Path(os.environ['FIXTURE_ROOT'])\n"
-        "(root/'opened.json').write_text(json.dumps({'argv':sys.argv[1:],'tty':os.isatty(0)}))\n"
+        "(root/'opened.json').write_text(json.dumps({'argv':sys.argv[1:],'tty':os.isatty(0),'handler':Path(sys.argv[0]).name}))\n"
         "deadline=time.monotonic()+10\n"
         "while not (root/'release').exists() and time.monotonic()<deadline: time.sleep(.01)\n"
         "(root/'app-done').touch()\n"
@@ -76,8 +76,25 @@ def isolated_desktop(tmp_path, monkeypatch):
         "[Desktop Entry]\nName=Fixture\nType=Application\nTerminal=true\n"
         "Exec=fixture-editor %f\nMimeType=text/plain;text/markdown;application/json;inode/directory;\n"
     )
+    player = bins / "fixture-player"
+    player.write_text(handler.read_text())
+    player.chmod(0o755)
+    (apps / "player.desktop").write_text(
+        "[Desktop Entry]\nName=Player\nType=Application\nTerminal=false\n"
+        "Exec=fixture-player %f\nMimeType=video/mp4;\n"
+    )
+    scheme = bins / "fixture-scheme"
+    scheme.write_text(
+        f"#!{sys.executable}\nimport os\nfrom pathlib import Path\n"
+        "(Path(os.environ['FIXTURE_ROOT'])/'scheme-called').touch()\n"
+    )
+    scheme.chmod(0o755)
+    (apps / "scheme.desktop").write_text(
+        "[Desktop Entry]\nName=URI handler\nType=Application\nTerminal=false\n"
+        "Exec=fixture-scheme %u\nMimeType=x-scheme-handler/file;\n"
+    )
     (config / "mimeapps.list").write_text(
-        "[Default Applications]\n"
+        "[Default Applications]\nx-scheme-handler/file=scheme.desktop;\nvideo/mp4=player.desktop;\n"
         + "".join(
             mime + "=fixture.desktop;\n"
             for mime in ("text/plain", "text/markdown", "application/json", "inode/directory")
@@ -86,7 +103,8 @@ def isolated_desktop(tmp_path, monkeypatch):
     yield tmp_path
     (tmp_path / "release").touch()
     if (tmp_path / "opened.json").exists():
-        wait_for(tmp_path / "terminal-done")
+        opened = json.loads((tmp_path / "opened.json").read_text())
+        wait_for(tmp_path / ("terminal-done" if opened["tty"] else "app-done"))
 
 
 def wait_for(path):
@@ -113,7 +131,12 @@ def test_terminal_associations_return_before_application_exit(isolated_desktop, 
     assert data["ok"] and data["mode"] == ("directory" if action == "reveal" else "open")
     wait_for(root / "opened.json")
     opened = json.loads((root / "opened.json").read_text())
-    assert opened == {"argv": [str(target.parent if action == "reveal" else target)], "tty": True}
+    assert opened == {
+        "argv": [str(target.parent if action == "reveal" else target)],
+        "tty": True,
+        "handler": "fixture-editor",
+    }
+    assert not (root / "scheme-called").exists()
     assert not (root / "app-done").exists(), "Open must not wait for application exit"
 
 
@@ -127,3 +150,29 @@ def test_real_gio_launch_failure_is_not_success(isolated_desktop, capsys):
     data = json.loads(capsys.readouterr().out)
     assert not data["ok"] and data["error"]["code"] == "file_action_failed"
     assert not (root / "opened.json").exists()
+
+
+def test_video_uses_mime_player_not_file_uri_handler(isolated_desktop, capsys):
+    root = isolated_desktop
+    target = root / '中文 # % ? " movie.mp4'
+    target.write_bytes(b"\x00\x00\x00\x18ftypisom\x00\x00\x00\x00isommp42")
+    assert main(["file", "open", "--", str(target)]) == 0
+    assert json.loads(capsys.readouterr().out)["mode"] == "open"
+    wait_for(root / "opened.json")
+    assert json.loads((root / "opened.json").read_text()) == {
+        "argv": [str(target)],
+        "tty": False,
+        "handler": "fixture-player",
+    }
+    assert not (root / "scheme-called").exists()
+    assert not (root / "app-done").exists()
+
+
+def test_missing_mime_app_does_not_fall_back_to_file_uri_handler(isolated_desktop, capsys):
+    root = isolated_desktop
+    (root / "data/applications/player.desktop").unlink()
+    target = root / "movie.mp4"
+    target.write_bytes(b"\x00\x00\x00\x18ftypisom\x00\x00\x00\x00isommp42")
+    assert main(["file", "open", "--", str(target)]) == 5
+    assert json.loads(capsys.readouterr().out)["error"]["code"] == "file_action_failed"
+    assert not (root / "scheme-called").exists()

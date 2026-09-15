@@ -9,6 +9,7 @@ import shutil
 import signal
 import stat
 import subprocess
+import sys
 import time
 
 from ..utils.output import fail, ok
@@ -274,18 +275,20 @@ def search(args):
 def open_request(path):
     if not shutil.which("gio"):
         raise FileNotFoundError("gio is not installed")
-    # GIO handles desktop associations and Terminal=true via the system terminal
-    # launcher. Unlike xdg-open's generic branch, it reports launch acceptance
-    # without waiting for the application to exit or running TUI apps without a TTY.
-    # Keep the application independent: an unconfirmed launch must not kill it.
+    # An isolated helper selects by content type and uses GAppInfo.launch.
+    # gio open prefers x-scheme-handler/file, which may send every file to a
+    # file manager. The helper still delegates Terminal=true and Exec to GIO.
     child = subprocess.Popen(
-        ["gio", "open", "--", str(path)],
+        [sys.executable, "-m", "key_cli.files.desktop_open", str(path)],
         stdin=subprocess.DEVNULL,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
         start_new_session=True,
     )
-    if child.wait(timeout=ACTION_SECONDS) != 0:
+    code = child.wait(timeout=ACTION_SECONDS)
+    if code == 3:
+        raise FileNotFoundError("GIO runtime is unavailable")
+    if code != 0:
         raise OSError("The default application rejected the open request")
 
 

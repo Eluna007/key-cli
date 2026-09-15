@@ -317,7 +317,12 @@ Successful requests retain `path`, `fileExists`, `mode` (`open`, `reveal`,
 `directory`) from the previous saved-file action envelope. Success means the
 system accepted the request, not proof that a window is visible.
 
-Open uses `gio open -- PATH` and the system default association for files or directory contents,
+Open queries the selected file's GIO `standard::content-type`, selects the default
+application with `g_app_info_get_default_for_type`, and submits that file through
+`g_app_info_launch`. Directories use `inode/directory`. An isolated Python helper
+uses the typed GIO C API through stdlib ctypes; no PyGObject dependency is required.
+This deliberately bypasses `x-scheme-handler/file`, which `gio open` prioritizes
+over MIME associations. Existing user associations are never rewritten. Open
 waits for GIO to confirm launch acceptance (not application exit), and never directly executes a file or parses desktop
 Exec. Executable regular files and desktop/application launcher content are
 blocked with `file_execution_blocked`; Reveal remains available. Broken links
@@ -328,7 +333,7 @@ at `/org/freedesktop/FileManager1`, signature `ass`, with a one-element array of
 `Path.as_uri()` and empty startup ID. `mode: reveal` means that method accepted
 the selection request. It selects the directory entry or link itself, not a
 resolved target. Missing service, timeout or method failure falls back to
-`gio open` on the parent (`mode: directory`), which does not promise selection.
+the same MIME-based GIO opener on the parent (`mode: directory`), which does not promise selection.
 An already missing entry also falls back to its existing parent with
 `fileExists: false`. Missing parent gives `directory_missing`.
 

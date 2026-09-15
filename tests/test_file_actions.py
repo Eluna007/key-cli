@@ -43,7 +43,7 @@ def test_open_exact_path_and_directory(desktop, capsys):
     for path in (target, target.parent):
         code, data = response(capsys, "open", path)
         assert code == 0 and data["mode"] == "open" and data["error"] is None
-        assert calls[-1][0] == ["gio", "open", "--", str(path)]
+        assert calls[-1][0][-1] == str(path)
         assert calls[-1][1]["start_new_session"] is True
         assert not calls[-1][1].get("shell")
 
@@ -77,7 +77,7 @@ def test_reveal_fallback_waits_for_opener(desktop, monkeypatch, capsys, failure)
     monkeypatch.setattr(backend.subprocess, "run", failed)
     code, data = response(capsys, "reveal", target)
     assert code == 0 and data["mode"] == "directory"
-    assert calls[-1][0] == ["gio", "open", "--", str(target.parent)]
+    assert calls[-1][0][-1] == str(target.parent)
 
 
 def test_missing_and_dangling_open_fail_reveal_survives(desktop, capsys):
