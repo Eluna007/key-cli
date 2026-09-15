@@ -26,6 +26,8 @@ complete -c key -f -n '__fish_seen_subcommand_from keyboard' -a 'status watch'
 complete -c key -f -n '__fish_seen_subcommand_from keyboard; and __fish_seen_subcommand_from status' -l format -a json
 complete -c key -f -n '__fish_seen_subcommand_from keyboard record audio; and __fish_seen_subcommand_from watch' -l format -a jsonl
 
-complete -c key -f -n '__fish_use_subcommand' -a file -d 'open or reveal a saved file'
-complete -c key -n '__fish_seen_subcommand_from file' -a 'open reveal'
+complete -c key -f -n '__fish_use_subcommand' -a file -d 'search, open or reveal local files'
+complete -c key -n '__fish_seen_subcommand_from file' -a 'status search open reveal'
 complete -c key -f -n '__fish_seen_subcommand_from file' -l format -a json
+complete -c key -f -n '__fish_seen_subcommand_from file; and __fish_seen_subcommand_from search' -l limit -x -d 'Maximum results (1–50)'
+complete -c key -n '__fish_seen_subcommand_from file; and __fish_seen_subcommand_from search' -l root -r -d 'Search root (repeatable; defaults to HOME)'

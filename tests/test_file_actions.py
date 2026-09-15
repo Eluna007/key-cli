@@ -1,117 +1,131 @@
-from __future__ import annotations
+"""Public file actions: safe desktop requests with acceptance and fallback."""
 
-import json
 from types import SimpleNamespace
+import json
+import subprocess
 
 import pytest
 
 from key_cli import main
-from key_cli.commands import file
+from key_cli.files import backend
 
 
 @pytest.fixture
-def environment(tmp_path, monkeypatch):
-    data = tmp_path / "data"
-    applications = data / "applications"
-    applications.mkdir(parents=True)
-    monkeypatch.setenv("XDG_DATA_HOME", str(data))
-    monkeypatch.setenv("XDG_DATA_DIRS", str(tmp_path / "empty"))
-    monkeypatch.setattr(file.shutil, "which", lambda name: "/bin/" + name)
-    monkeypatch.setattr(
-        file.subprocess,
-        "run",
-        lambda *a, **k: SimpleNamespace(returncode=0, stdout="manager.desktop\n"),
-    )
-    launched = []
-    monkeypatch.setattr(file.subprocess, "Popen", lambda argv, **kw: launched.append(argv))
-    target = tmp_path / '测试 <a> " $(touch nope) #%.m4a'
+def desktop(tmp_path, monkeypatch):
+    target = tmp_path / '测试 <a> " $(touch nope)\n\t#%?.wav'
     target.write_bytes(b"audio")
-    return applications / "manager.desktop", target, launched
+    calls = []
+    monkeypatch.setattr(backend.shutil, "which", lambda name: "/bin/" + name)
+
+    def spawn(argv, **kwargs):
+        calls.append((argv, kwargs))
+        return SimpleNamespace(wait=lambda timeout: 0)
+
+    def bus(argv, **kwargs):
+        calls.append((argv, kwargs))
+        return SimpleNamespace(returncode=0)
+
+    monkeypatch.setattr(backend.subprocess, "Popen", spawn)
+    monkeypatch.setattr(backend.subprocess, "run", bus)
+    return target, calls
 
 
-def entry(path, program, terminal=False):
-    path.write_text(
-        f"[Desktop Entry]\nType=Application\nExec={program} %f\nTerminal={str(terminal).lower()}\n"
-    )
+def response(capsys, action, path):
+    code = main(["file", action, "--format", "json", "--", str(path)])
+    data = json.loads(capsys.readouterr().out)
+    assert data["schemaVersion"] == 1 and data["command"] == "file." + action
+    assert data["ok"] == (code == 0)
+    return code, data
 
 
-@pytest.mark.parametrize(
-    "program,terminal,prefix",
-    [
-        ("yazi", True, ["xdg-terminal-exec", "--", "yazi", "--"]),
-        ("dolphin", False, ["dolphin", "--select"]),
-        ("nautilus", False, ["nautilus", "--select"]),
-    ],
-)
-def test_reveal_public_command(environment, capsys, program, terminal, prefix):
-    desktop, target, launched = environment
-    entry(desktop, program, terminal)
-    assert main(["file", "reveal", str(target), "--format", "json"]) == 0
-    result = json.loads(capsys.readouterr().out)
-    assert result == dict(
-        schemaVersion=1,
-        command="file.reveal",
-        ok=True,
-        error=None,
-        mode="reveal",
-        fileExists=True,
-        path=str(target),
-    )
-    assert launched == [[*prefix, str(target)]]
-    assert target.read_bytes() == b"audio"
+def test_open_exact_path_and_directory(desktop, capsys):
+    target, calls = desktop
+    for path in (target, target.parent):
+        code, data = response(capsys, "open", path)
+        assert code == 0 and data["mode"] == "open" and data["error"] is None
+        assert calls[-1][0] == ["gio", "open", "--", str(path)]
+        assert calls[-1][1]["start_new_session"] is True
+        assert not calls[-1][1].get("shell")
 
 
-@pytest.mark.parametrize("terminal", [False, True])
-def test_unknown_manager_opens_directory(environment, capsys, terminal):
-    desktop, target, launched = environment
-    entry(desktop, "custom-manager", terminal)
-    assert main(["file", "reveal", str(target)]) == 0
-    assert json.loads(capsys.readouterr().out)["mode"] == "directory"
-    assert launched == [
-        (["xdg-terminal-exec", "--"] if terminal else []) + ["xdg-open", str(target.parent)]
-    ]
+@pytest.mark.parametrize("kind", ["file", "directory", "symlink", "dangling"])
+def test_reveal_typed_uri_including_link_identity(desktop, capsys, kind):
+    target, calls = desktop
+    path = target
+    if kind == "directory":
+        path = target.parent
+    elif kind in {"symlink", "dangling"}:
+        path = target.parent / "link"
+        path.symlink_to(target if kind == "symlink" else target.parent / "missing")
+    code, data = response(capsys, "reveal", path)
+    assert code == 0 and data["mode"] == "reveal"
+    assert calls[-1][0][-5:] == ["ShowItems", "ass", "1", path.as_uri(), ""]
+    assert len(calls) == 1
 
 
-def test_missing_file_reveals_parent_but_cannot_open(environment, capsys):
-    desktop, target, launched = environment
-    entry(desktop, "yazi", True)
+@pytest.mark.parametrize("failure", ["missing", "error", "timeout"])
+def test_reveal_fallback_waits_for_opener(desktop, monkeypatch, capsys, failure):
+    target, calls = desktop
+
+    def failed(*args, **kwargs):
+        if failure == "missing":
+            raise FileNotFoundError()
+        if failure == "timeout":
+            raise subprocess.TimeoutExpired("busctl", 4)
+        return SimpleNamespace(returncode=1)
+
+    monkeypatch.setattr(backend.subprocess, "run", failed)
+    code, data = response(capsys, "reveal", target)
+    assert code == 0 and data["mode"] == "directory"
+    assert calls[-1][0] == ["gio", "open", "--", str(target.parent)]
+
+
+def test_missing_and_dangling_open_fail_reveal_survives(desktop, capsys):
+    target, calls = desktop
     target.unlink()
-    assert main(["file", "reveal", str(target)]) == 0
-    result = json.loads(capsys.readouterr().out)
-    assert result["fileExists"] is False and result["mode"] == "directory"
-    assert main(["file", "open", str(target)]) == 5
-    assert json.loads(capsys.readouterr().out)["error"]["code"] == "file_missing"
-    assert len(launched) == 1
-    assert not target.exists()
+    assert response(capsys, "open", target)[1]["error"]["code"] == "file_missing"
+    assert response(capsys, "reveal", target)[1]["mode"] == "directory"
+    target.symlink_to(target.parent / "missing")
+    assert response(capsys, "open", target)[0] == 5
+    assert response(capsys, "reveal", target)[1]["mode"] == "reveal"
 
 
-def test_open_uses_exact_path(environment, capsys):
-    _, target, launched = environment
-    assert main(["file", "open", str(target)]) == 0
-    assert json.loads(capsys.readouterr().out)["mode"] == "open"
-    assert launched == [["xdg-open", str(target)]]
+@pytest.mark.parametrize("kind", ["executable", "desktop", "linked-desktop"])
+def test_never_launch_executable_content(desktop, capsys, kind):
+    target, calls = desktop
+    if kind == "executable":
+        target.chmod(0o755)
+    else:
+        desktop_file = target.with_suffix(".desktop")
+        desktop_file.write_text("[Desktop Entry]\nExec=touch /tmp/forbidden\n")
+        if kind == "desktop":
+            target = desktop_file
+        else:
+            target.unlink()
+            target.symlink_to(desktop_file)
+    code, data = response(capsys, "open", target)
+    assert code == 5 and data["error"]["code"] == "file_execution_blocked"
+    assert not calls
 
 
-def test_missing_terminal_reports_action_error(environment, monkeypatch, capsys):
-    desktop, target, launched = environment
-    entry(desktop, "yazi", True)
+def test_failure_is_not_spawn_success(desktop, monkeypatch, capsys):
+    target, _ = desktop
     monkeypatch.setattr(
-        file.shutil, "which", lambda name: None if name == "xdg-terminal-exec" else name
+        backend.subprocess, "Popen", lambda *a, **k: SimpleNamespace(wait=lambda timeout: 2)
     )
-    assert main(["file", "reveal", str(target)]) == 3
-    assert json.loads(capsys.readouterr().out)["error"]["code"] == "dependency_missing"
-    assert not launched
+    assert response(capsys, "open", target)[1]["error"]["code"] == "file_action_failed"
+    monkeypatch.setattr(backend.shutil, "which", lambda name: None)
+    assert response(capsys, "open", target)[0] == 3
+    assert response(capsys, "open", "relative")[0] == 2
 
 
-def test_invalid_path_and_spawn_failure(environment, monkeypatch, capsys):
-    _, target, launched = environment
-    assert main(["file", "open", "relative"]) == 2
-    assert json.loads(capsys.readouterr().out)["error"]["code"] == "invalid_path"
+def test_open_timeout_is_unconfirmed_without_killing_application(desktop, monkeypatch, capsys):
+    target, _ = desktop
 
-    def denied(*a, **k):
-        raise PermissionError("launch denied")
+    def wait(timeout):
+        raise subprocess.TimeoutExpired("gio", timeout)
 
-    monkeypatch.setattr(file.subprocess, "Popen", denied)
-    assert main(["file", "open", str(target)]) == 5
-    assert json.loads(capsys.readouterr().out)["error"]["code"] == "file_action_failed"
-    assert not launched
+    # No terminate/kill method: an unconfirmed request must not kill launched apps.
+    monkeypatch.setattr(backend.subprocess, "Popen", lambda *a, **k: SimpleNamespace(wait=wait))
+    code, data = response(capsys, "open", target)
+    assert code == 5 and data["error"]["code"] == "file_action_timeout"

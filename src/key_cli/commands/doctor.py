@@ -7,6 +7,7 @@ import os
 import sys
 from pathlib import Path
 from ..keyboard.backend import responses
+from ..files.backend import status as file_status
 from ..clipboard.backend import watcher_running
 from typing import Any
 
@@ -15,6 +16,7 @@ from ..utils.output import DEPENDENCY_FAILURE, Result
 
 
 COMMANDS = {
+    "gio": {"features": ["file-open", "file-reveal-fallback"]},
     "qs": {"features": ["shell", "ipc"]},
     "gpu-screen-recorder": {"features": ["record"]},
     "slurp": {"features": ["record-region"]},
@@ -133,6 +135,16 @@ def run(args) -> Result:
         "clipboard-restore": all(commands[name]["available"] for name in ("cliphist", "wl-copy")),
         "clipboard-watch": all(commands[name]["available"] for name in ("cliphist", "wl-paste")),
     }
+    files = file_status().json()
+    features.update(
+        {
+            "file-search": files["canSearch"],
+            "file-open": files["canOpen"],
+            "file-reveal": files["canReveal"],
+        }
+    )
+    if not files["canSearch"]:
+        missing.append("fd")
     keyboard = next(responses()).json()
     watching = watcher_running()
     services = {}
@@ -167,6 +179,7 @@ def run(args) -> Result:
         "features": features,
         "missing": missing,
         "keyboard": keyboard,
+        "file": files,
         "clipboard": {"watcherRunning": watching, "services": services},
         "installation": {**installation_details(), "overrides": overrides},
         "runtimeReady": runtime_ready,

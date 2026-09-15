@@ -8,12 +8,26 @@ from typing import Sequence
 from ._version import __version__
 
 from .parser import build_parser
-from .utils.output import emit_result
+from .utils.output import emit_result, fail
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     parser = build_parser()
-    args = parser.parse_args(list(argv) if argv is not None else None)
+    arguments = list(argv) if argv is not None else sys.argv[1:]
+    try:
+        args = parser.parse_args(arguments)
+    except SystemExit as exc:
+        if exc.code == 2 and arguments[:1] == ["file"]:
+            action = (
+                arguments[1]
+                if len(arguments) > 1 and arguments[1] in {"status", "search", "open", "reveal"}
+                else "unknown"
+            )
+            return emit_result(
+                fail("file." + action, 2, "invalid_arguments", "Invalid file command arguments"),
+                True,
+            )
+        raise
     if getattr(args, "version_flag", False):
         args.command = "version"
         args.json = getattr(args, "json", False)

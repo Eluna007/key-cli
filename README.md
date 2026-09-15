@@ -214,15 +214,15 @@ ordering, process-exit and error semantics.
 
 Use `key file reveal /absolute/path --format json` to find a saved recording, or
 `key file open /absolute/path --format json` to open it with its default application.
-Yazi is launched through `xdg-terminal-exec`; Dolphin and Nautilus can select the file.
-Other managers open its parent directory. See [file actions](docs/protocol.md#saved-file-actions).
+Reveal uses FileManager1 selection, with a parent-directory fallback through GIO.
+Terminal apps use the system terminal launcher. See [file actions](docs/protocol.md#file-search-and-desktop-actions).
 
 ## Dependencies and troubleshooting
 
 | Feature | Runtime dependencies |
 | --- | --- |
 | Shell and IPC | Clavis Shell and Quickshell (`qs`) |
-| Saved-file actions | `xdg-open`, `xdg-mime`, a file manager; `xdg-terminal-exec` for terminal file managers |
+| Saved-file actions | GLib (`gio`), a default application; `xdg-terminal-exec` for terminal apps; `busctl` for selection |
 | Keyboard LEDs | Python `evdev`, `pyudev`, and access to the relevant evdev devices |
 | Clipboard | `cliphist`, `wl-copy`, `wl-paste`; capture also requires the watcher |
 | Screen recording | `gpu-screen-recorder`; `slurp` for region selection |
@@ -279,3 +279,15 @@ AUR packages: `key-cli` and optional `key-cli-keyboard-access`. The existing
 ## License
 
 [GPL-3.0-or-later](LICENSE).
+
+### File search
+
+Install the external `fd` (or `fdfind`), GLib (`gio`), and `busctl` runtime tools;
+a Python wheel does not include OS dependencies. `key file status --format json`
+reports capabilities. Search HOME with `key file search --format json -- 'report'`
+or supply repeatable absolute `--root` paths. Hidden/ignored files retain fd defaults;
+results are bounded, and the response identifies incomplete searches.
+Use `key file open -- /absolute/path` for the default association, or
+`key file reveal -- /absolute/path` to request selection in a file manager.
+Reveal falls back to opening the parent directory when FileManager1 cannot accept
+the request. See [the protocol](docs/protocol.md#file-search-and-desktop-actions).

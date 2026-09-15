@@ -110,6 +110,21 @@
           "package": "wl-clipboard",
           "purpose": "Wayland clipboard",
           "defaultInstall": true
+        },
+        {
+          "package": "fd",
+          "purpose": "Spotlight literal file search",
+          "defaultInstall": true
+        },
+        {
+          "package": "systemd",
+          "purpose": "busctl FileManager1 desktop requests",
+          "defaultInstall": true
+        },
+        {
+          "package": "glib2",
+          "purpose": "GIO desktop opening with Terminal=true support",
+          "defaultInstall": true
         }
       ],
       "optional": [

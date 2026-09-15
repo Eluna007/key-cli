@@ -53,12 +53,19 @@ def build_parser() -> argparse.ArgumentParser:
     ipc_parser.add_argument("method", nargs="?")
     ipc_parser.add_argument("arguments", nargs=argparse.REMAINDER)
 
-    file_parser = commands.add_parser("file", help="open or reveal a saved file")
+    file_parser = commands.add_parser("file", help="search, open or reveal local files")
     file_commands = file_parser.add_subparsers(dest="action", required=True)
     for action in ("open", "reveal"):
         sub = file_commands.add_parser(action, help=f"{action} a local file")
         sub.add_argument("path", help="absolute local file path")
         sub.add_argument("--format", choices=["json"], default="json")
+    status = file_commands.add_parser("status", help="inspect file search and action capabilities")
+    status.add_argument("--format", choices=["json"], default="json")
+    search = file_commands.add_parser("search", help="literal case-insensitive filename search")
+    search.add_argument("--format", choices=["json"], default="json")
+    search.add_argument("--limit", default="50", help="maximum results (1–50)")
+    search.add_argument("--root", action="append", help="search root; repeatable, defaults to HOME")
+    search.add_argument("query")
     file_parser.set_defaults(handler=file_action)
 
     record_parser = commands.add_parser("record", help="record the screen with gpu-screen-recorder")

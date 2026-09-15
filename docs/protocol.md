@@ -228,35 +228,125 @@ closed output pipe exits cleanly. The watcher is session-scoped and is not a dae
 it does not discover future sessions after exiting idle. A shell may query status once
 at initialization, then subscribe when its command response establishes an active session.
 
-## Saved-file actions
+## File search and desktop actions
 
-`key file reveal /absolute/path --format json` and `key file open /absolute/path --format json`
-return the standard schemaVersion 1 envelope (`file.reveal` / `file.open`). They never change
-recording state, create a missing file, or start a watcher. Successful dispatch includes
-`path`, `fileExists`, and `mode` (`reveal`, `directory`, or `open`). Dispatch means the
-launcher was started, not proof that a window appeared or received focus; later application
-errors are outside this one-shot interface. Existing activation environment is inherited.
+All four commands use schemaVersion 1, `command`, `ok`, `error` and the existing
+exit codes: 0 success, 2 invalid arguments, 3 missing dependency, 5 backend/state
+failure. stdout contains one JSON object, including file argument failures.
 
-Reveal queries `xdg-mime` for the default `inode/directory` application and reads its desktop
-entry using XDG data-directory precedence. Standard Yazi entries use `xdg-terminal-exec --
-yazi -- PATH`; standard Dolphin and Nautilus entries use their `--select` interface. Custom
-launchers and other applications fall back to opening the parent directory with `xdg-open`,
-wrapped in `xdg-terminal-exec` for `Terminal=true`. No unrelated FileManager1 service is
-activated in place of the user's chosen default. `mode: directory` does not promise selection.
+```sh
+key file status --format json
+key file search --format json --limit 50 --root /absolute/root -- 'QUERY'
+key file open --format json -- '/absolute/path'
+key file reveal --format json -- '/absolute/path'
+```
 
-If a file is missing but its parent exists, reveal opens the parent with `fileExists: false`.
-Open uses `xdg-open` on the exact existing file. Relative paths are rejected (exit 2), missing
-executables return exit 3, and missing paths, invalid desktop configuration, query timeout or
-launch errors return exit 5. Paths are passed as individual arguments, never shell source.
-`xdg-utils` is required; terminal file managers additionally require `xdg-terminal-exec`.
+`file.status` is a capability probe (exit 0). `capabilities` declares `search`,
+`open`, `reveal`; `canSearch`, `canOpen`, `canReveal` report availability.
+`dependencies` contains `fd`, `gio`, `xdgTerminalExec`, `fileManager1` and the
+retained diagnostic `xdgOpen` field. Open availability now depends on `gio`,
+not `xdgOpen`; terminal selection is delegated to GIO. `reasons` gives null or
+a diagnostic code for each operation. Missing fd does not disable open/reveal.
+The D-Bus probe checks registered and activatable services without starting a
+file manager. `doctor.file` exposes the same data and file feature availability.
+Older key versions without `file.status` do not support the search contract.
 
-### Installation diagnostics
+### Search
 
-`key doctor --json` preserves `installation.keyPath` as the PATH-selected key and the
-existing exit-code contract. Additional fields distinguish `invocation`, `currentKey`,
-`pythonExecutable`, `modulePath`, inherited `clavisKey`, `userUnits` (effective
-FragmentPath/DropInPaths/ExecStart), `keyboardRules` (precedence order), `sourceManifest`
-and `developmentManifest`. `currentKey` is null for direct Python script/module invocation
-without a CLI entry point. Expected source installs/development overrides are not
-errors. `runtimeReady` still describes optional keyboard/clipboard runtime readiness,
-not main-program installation success. No unrelated environment variables are emitted.
+`--root` is repeatable; omitted roots default to the current user's HOME.
+Roots must be absolute existing directories. fd (or Debian's fdfind) is an
+external executable, not included in the wheel. Defaults retain fd's hidden,
+ignore and gitignore rules (including fd's normal repository detection), do not
+follow directory symlinks and include regular files, directories and links.
+There are no hardcoded build/dist/Backup exclusions or extra system roots.
+
+Queries are case-insensitive literal filename substrings (`--fixed-strings`).
+A slash switches to literal matching against absolute paths (`--full-path`).
+No glob/regex, shell expansion or command substitution occurs. Whitespace-only
+queries return an empty complete response without spawning fd; all other input
+is preserved, including leading dashes, whitespace and single Chinese characters.
+Paths use NUL output, argv arrays and no color or long-listing parsing.
+
+`file.search` returns `query`, `roots`, `entries`, `complete`, `limited`,
+`limitReasons` and `skippedNonUtf8`. Up to 50 results (CLI limit 1–50) are selected
+from at most 400 unique candidates with a 3-second fd time budget. Ranking within
+that pool is name equality, name prefix, name substring, then path matches;
+ties use case-folded name/path and original path. This is not a guarantee of the
+most relevant matches across an entire directory tree. No total count is claimed.
+
+`limitReasons` contains `candidates`, `time`, or `results` when curtailed;
+`complete` is false and `limited` true even if a timed-out search found nothing.
+A complete empty response is the only definitive no-match state. fd failure is
+`file_search_failed` (5), missing fd is `fd_unavailable` (3), invalid input is
+`invalid_search` (2). SIGTERM/SIGINT cancels the owned fd process group and reaps
+it before Python exits (`file_search_cancelled`, 5). UI requests use SIGTERM;
+unrecoverable external SIGKILL cannot run Python cleanup.
+
+Each entry contains:
+
+| Field | Meaning |
+| --- | --- |
+| `name`, `path` | Original name and absolute operational UTF-8 path |
+| `parentPath`, `parentName` | Containing directory path/name; root uses `/` |
+| `kind` | `file`, `directory`, or `symlink` (link identity retained) |
+| `mimeType` | Lightweight Python mimetypes filename guess, not content detection; unknown `application/octet-stream`, directory `inode/directory` |
+| `extension` | Lowercase last suffix without dot; empty for folders/no suffix |
+| `size` | Target regular-file bytes, including zero; null for folders/unavailable |
+| `modifiedTime` | Unix seconds, fractional precision, from entry lstat mtime |
+| `isDirectory` | Whether the entry/accessible link target is a directory |
+| `isSymlink` | Whether the entry itself is a link |
+| `isExecutable` | Regular target has execute access; directories always false |
+| `icon` | MIME theme icon name or `folder`; UI supplies a generic fallback |
+| `targetAvailable` | Stat succeeded on the entry/target |
+
+Links retain their own path, kind and modification time. Size, directory and
+executable flags describe the target when available; MIME uses the link's name.
+Dangling links remain revealable, with null size and targetAvailable false.
+Disappeared/inaccessible entries can be skipped independently. No recursive
+size computation or per-file external probes occur. Metadata is read only for
+bounded sorted candidates until enough displayable results exist.
+
+JSON preserves Chinese, spaces, quotes, newline/tab and URI-special characters.
+Non-UTF-8 filenames are skipped and counted, never lossy-decoded into another
+operational path. Explicit non-UTF-8 action arguments are rejected. Paths are not
+shell-escaped, home-abbreviated or resolved to symlink targets for operations.
+
+### Open and Reveal
+
+Successful requests retain `path`, `fileExists`, `mode` (`open`, `reveal`,
+`directory`) from the previous saved-file action envelope. Success means the
+system accepted the request, not proof that a window is visible.
+
+Open uses `gio open -- PATH` and the system default association for files or directory contents,
+waits for GIO to confirm launch acceptance (not application exit), and never directly executes a file or parses desktop
+Exec. Executable regular files and desktop/application launcher content are
+blocked with `file_execution_blocked`; Reveal remains available. Broken links
+return `file_missing`. Apps remains the launcher for executable content.
+
+Reveal first waits for session D-Bus `org.freedesktop.FileManager1.ShowItems`
+at `/org/freedesktop/FileManager1`, signature `ass`, with a one-element array of
+`Path.as_uri()` and empty startup ID. `mode: reveal` means that method accepted
+the selection request. It selects the directory entry or link itself, not a
+resolved target. Missing service, timeout or method failure falls back to
+`gio open` on the parent (`mode: directory`), which does not promise selection.
+An already missing entry also falls back to its existing parent with
+`fileExists: false`. Missing parent gives `directory_missing`.
+
+This replaces the former per-manager desktop-entry adapters. The FileManager1
+provider can differ from the default directory handler. Neither MIME associations
+nor D-Bus configuration is changed. TUI managers rely on users' existing system
+association/terminal launcher setup. GIO honors `Terminal=true` and uses the
+system terminal launcher (`xdg-terminal-exec` is preferred by current GLib),
+so both terminal editors and file managers receive a terminal. key does not parse
+Exec or launch a naked yazi/nvim process. The xdg-open generic fallback is not
+used: it can ignore Terminal=true, wait for application exit and mask failures.
+Missing associations or launch failures reported by GIO are errors. Acceptance
+cannot prove the terminal/application will subsequently display or stay running.
+
+Runtime tools: fd/fdfind, GLib (`gio`), systemd (`busctl`, optional for
+selection when the parent-directory fallback is available). The wheel cannot
+install these OS packages. D-Bus waits at most 3 seconds, open acceptance waits
+5 seconds. `file_action_timeout` reports unconfirmed acceptance; it does not kill
+an application that may already have been opened. Other action failures return
+`file_action_failed`; missing opener returns `dependency_missing` (3). Search
+cancellation never terminates applications opened by these independent requests.
