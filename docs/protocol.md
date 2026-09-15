@@ -119,6 +119,48 @@ saved history limit. Spotlight explicitly requests 750, then inspects details on
 a list query does not decode every entry. Inspection's extended `searchText` and the
 original payload restoration protocol are unchanged.
 
+## Clipboard inspection details
+
+`clipboard.inspect` adds compatible fields for text, without increasing the
+lightweight list's text content or changing schemaVersion/capability requirements:
+
+- `searchText`: untouched original prefix, at most `DETAIL_TEXT_LIMIT = 262144`
+  Python Unicode code points. This existing search field also serves as the Details
+  body; no second large body field is emitted. Whitespace and literal markup remain.
+- `characterCount`: `len(text)` of the complete decoded saved text, including
+  whitespace, punctuation and newline code points; not UTF-8 bytes, UTF-16 code
+  units, words or graphemes.
+- `textLineCount`: zero for empty text, otherwise one plus CRLF/lone CR/lone LF
+  separator count, including blank and trailing lines. The old `lineCount`
+  remains a nonblank summary count and is not changed.
+- `textTruncated`: true exactly when the text exceeds that limit.
+- `detailTextLimit`: 262144, in code points. `byteSize` remains the complete
+  saved representation's byte count, never preview size or process memory.
+
+Reliable text statistics are absent from lightweight rows and nontext records.
+Consumers of older inspect responses should omit missing statistics and label
+uncertain completeness as Preview. Restoration always decodes and publishes the
+complete saved bytes, never the search prefix or 4096-character list preview.
+
+File metadata adds `sizeKnown`, `metadataAvailable`, `metadataStatus` and
+`modifiedTime`. `metadataStatus` is `available`, `missing`, `unreadable`, `remote`
+or `unavailable`. `metadataAvailable` means stat succeeded; `sizeKnown` is true
+only for a readable regular file, including a genuine zero-byte file. The legacy
+`files[].byteSize` stays zero when size is unknown or inapplicable: consumers must
+check `sizeKnown`. Directory content sizes are not calculated. Top-level byteSize
+is the saved URI representation size, distinct from referenced file bytes.
+`modifiedTime` is a nullable Unix timestamp in **seconds**, from the same stat,
+matching file-search metadata. These fields describe current inspection-time
+state, never copying time. Remote references are not read or mounted.
+
+Local raster preview URLs are restricted to PNG/JPEG/GIF/WebP, readable regular
+files within the existing payload/dimension bounds, with a bounded header check.
+Unknown dimensions are omitted or zero and must not be displayed as 0×0. No SVG
+or remote URI is exposed as a preview. File references remain file/file-list
+payloads, preserving copy/cut restore semantics; source files are not archived.
+Image payload caches contain the original saved bytes without transcoding.
+A consumer may show frame zero of animated data without altering restoration.
+
 ## Clipboard capture
 
 `key clipboard watch` keeps one `wl-paste --watch` process. Each callback applies

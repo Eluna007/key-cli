@@ -360,3 +360,139 @@ def test_inspection_retains_search_text_beyond_preview():
     assert failure is None
     assert "searchable suffix" not in payload["preview"]
     assert "searchable suffix" in payload["searchText"]
+
+
+@pytest.mark.parametrize(
+    ("text", "lines"),
+    [("", 0), ("a", 1), ("a\n", 2), ("a\n\nb", 3), ("a\r\nb", 2), (" \t中文😀\r\n\r x \n", 4)],
+)
+def test_detail_statistics_preserve_literal_text(text, lines):
+    data = text.encode("utf-8")
+    payload, failure = inspect_payload("1", data, False)
+    assert failure is None
+    assert payload["payloadKind"] == "text"
+    assert payload["searchText"] == text
+    assert payload["characterCount"] == len(text)
+    assert payload["textLineCount"] == lines
+    assert payload["byteSize"] == len(data)
+    assert payload["textTruncated"] is False
+    assert "characterCount" not in lightweight("1", "summary")
+    assert "textLineCount" not in lightweight("1", "summary")
+
+
+@pytest.mark.parametrize("length", [262143, 262144, 262145])
+def test_detail_limit_is_unicode_codepoints(length):
+    text = "😀" * (length - 1) + "末"
+    payload, failure = inspect_payload("1", text.encode(), False)
+    assert failure is None
+    assert payload["characterCount"] == length
+    assert payload["searchText"] == text[:262144]
+    assert payload["textTruncated"] is (length > 262144)
+    assert payload["detailTextLimit"] == 262144
+    assert payload["byteSize"] == len(text.encode())
+
+
+@pytest.mark.parametrize(
+    "data",
+    [
+        ("中😀\n" * 100000 + " final tail ").encode(),
+        b"GIF89a" + b"\x10\x00\x08\x00" + b"animation frame bytes",
+        b"RIFF" + b"\0" * 4 + b"WEBPVP8X" + b"\0" * 4 + b"\x02" + b"\0" * 9 + b"ANIM frame bytes",
+    ],
+)
+def test_inspect_and_restore_keep_entire_saved_payload(monkeypatch, data):
+    from pathlib import Path
+    from urllib.parse import unquote, urlparse
+
+    copied = []
+    monkeypatch.setattr(backend, "executable", lambda name: name)
+    monkeypatch.setattr(
+        backend,
+        "run",
+        lambda *args, **kwargs: subprocess.CompletedProcess([], 0, stdout=data, stderr=b""),
+    )
+    monkeypatch.setattr(
+        backend,
+        "run_wl_copy",
+        lambda program, args, input_data: (
+            copied.append(input_data) or subprocess.CompletedProcess([], 0)
+        ),
+    )
+    inspected = backend.run_command(SimpleNamespace(action="inspect", id="12"))
+    assert inspected.exit_code == 0
+    info = inspected.json()
+    assert info["schemaVersion"] == 1
+    assert info["command"] == "clipboard.inspect"
+    if info["payloadKind"] == "image":
+        assert Path(unquote(urlparse(info["previewUrl"]).path)).read_bytes() == data
+    else:
+        assert info["textTruncated"] is True
+        assert not info["searchText"].endswith(" final tail ")
+    restored = backend.run_command(SimpleNamespace(action="restore", id="12"))
+    assert restored.exit_code == 0
+    assert copied == [data]
+
+
+def test_file_reference_sizes_states_and_timestamp(tmp_path, monkeypatch):
+    import os
+
+    path = tmp_path / "empty.txt"
+    path.touch()
+    os.utime(path, (1700000000, 1700000000.5))
+    uri_bytes = (path.as_uri() + "\n").encode()
+    payload, failure = inspect_payload("1", uri_bytes, False)
+    assert failure is None
+    item = payload["files"][0]
+    assert payload["byteSize"] == len(uri_bytes)
+    assert item["byteSize"] == 0 and item["sizeKnown"] is True
+    assert item["modifiedTime"] == 1700000000.5
+    assert item["metadataAvailable"] is True
+    directory = file_metadata(tmp_path.as_uri())
+    assert directory["directory"] is True and directory["sizeKnown"] is False
+    assert directory["byteSize"] == 0
+    path.write_bytes(b"changed")
+    assert file_metadata(path.as_uri())["byteSize"] == 7
+    monkeypatch.setattr(backend.os, "access", lambda *args: False)
+    unreadable = file_metadata(path.as_uri())
+    assert unreadable["metadataStatus"] == "unreadable"
+    assert unreadable["sizeKnown"] is False
+    path.unlink()
+    missing = file_metadata(path.as_uri())
+    assert missing["metadataStatus"] == "missing"
+    assert missing["modifiedTime"] is None and missing["sizeKnown"] is False
+    remote = file_metadata("smb://host/share/photo.png")
+    assert remote["metadataStatus"] == "remote"
+    assert remote["previewUrl"] == "" and remote["metadataAvailable"] is False
+
+
+def test_file_preview_excludes_svg_and_unsafe_or_damaged_images(tmp_path):
+    for name, data in [
+        ("photo.svg", b'<svg><image href="https://example.test/image"/></svg>'),
+        ("broken.png", b"broken"),
+        (
+            "huge.png",
+            b"\x89PNG\r\n\x1a\n" + b"\0" * 8 + (20000).to_bytes(4, "big") + (1).to_bytes(4, "big"),
+        ),
+    ]:
+        path = tmp_path / name
+        path.write_bytes(data)
+        assert file_metadata(path.as_uri())["previewUrl"] == ""
+
+
+def test_image_reference_read_failure_does_not_claim_readable_size(tmp_path, monkeypatch):
+    from pathlib import Path
+
+    path = tmp_path / "locked.png"
+    path.write_bytes(b"image bytes")
+
+    def denied(*args, **kwargs):
+        raise PermissionError("denied")
+
+    monkeypatch.setattr(Path, "open", denied)
+    item = file_metadata(path.as_uri())
+    assert item["metadataAvailable"] is True
+    assert item["metadataStatus"] == "unreadable"
+    assert item["sizeKnown"] is False and item["previewUrl"] == ""
+    # Lightweight listings must not attempt to read image data.
+    row = lightweight("1", path.as_uri())
+    assert row["files"][0]["metadataStatus"] == "available"

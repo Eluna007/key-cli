@@ -6,6 +6,7 @@ import mimetypes
 import os
 import re
 import shutil
+import stat
 import subprocess
 import sys
 import time
@@ -20,6 +21,7 @@ from ..utils.executable import current_key_executable
 
 MAX_PAYLOAD = 64 * 1024 * 1024
 MAX_LIMIT = 750
+DETAIL_TEXT_LIMIT = 262144
 CAPABILITIES = {
     "inspect": True,
     "preview": True,
@@ -309,7 +311,7 @@ def remove_previews(entry_id: str | None = None) -> None:
                 pass
 
 
-def file_metadata(uri: str) -> dict:
+def file_metadata(uri: str, inspect_preview: bool = True) -> dict:
     parsed = urlparse(uri)
     scheme = parsed.scheme.lower()
     path = (
@@ -325,13 +327,26 @@ def file_metadata(uri: str) -> dict:
     readable = False
     directory = False
     byte_size = 0
+    size_known = False
+    modified_time = None
+    metadata_available = False
+    metadata_status = "remote" if path is None else "unavailable"
     if path is not None:
         try:
-            exists = path.exists()
+            info = path.stat()
+            exists = True
             readable = os.access(path, os.R_OK)
-            directory = path.is_dir()
-            if path.is_file():
-                byte_size = path.stat().st_size
+            directory = stat.S_ISDIR(info.st_mode)
+            metadata_available = True
+            modified_time = info.st_mtime
+            size_known = stat.S_ISREG(info.st_mode) and readable
+            if size_known:
+                byte_size = info.st_size
+            metadata_status = "available" if readable else "unreadable"
+        except FileNotFoundError:
+            metadata_status = "missing"
+        except PermissionError:
+            metadata_status = "unreadable"
         except OSError:
             pass
 
@@ -342,6 +357,10 @@ def file_metadata(uri: str) -> dict:
         "readable": readable,
         "directory": directory,
         "byteSize": byte_size,
+        "sizeKnown": size_known,
+        "metadataAvailable": metadata_available,
+        "metadataStatus": metadata_status,
+        "modifiedTime": modified_time,
         "mimeType": mimetypes.guess_type(name, strict=False)[0] or "",
         "category": "file",
         "icon": "file_present",
@@ -359,7 +378,14 @@ def file_metadata(uri: str) -> dict:
             {
                 "category": "image",
                 "icon": "image",
-                "previewUrl": uri if value["local"] and value["exists"] else "",
+                "previewUrl": uri
+                if inspect_preview
+                and value["local"]
+                and readable
+                and size_known
+                and byte_size <= MAX_PAYLOAD
+                and value["mimeType"] in IMAGE_MIME_TYPES
+                else "",
             }
         )
     elif value["mimeType"].startswith("video/"):
@@ -372,6 +398,22 @@ def file_metadata(uri: str) -> dict:
         value.update({"category": "code", "icon": "code"})
     elif value["mimeType"].startswith("text/"):
         value.update({"category": "document", "icon": "description"})
+    if value["previewUrl"] and path is not None:
+        try:
+            with path.open("rb") as source:
+                image = image_info(source.read(65536))
+            if image and image[1] <= 16384 and image[2] <= 16384:
+                value.update(width=image[1], height=image[2])
+            else:
+                value["previewUrl"] = ""
+        except OSError:
+            value.update(
+                previewUrl="",
+                readable=False,
+                sizeKnown=False,
+                byteSize=0,
+                metadataStatus="unreadable",
+            )
     return value
 
 
@@ -472,7 +514,7 @@ def _inspect_payload(
         text = ""
     if text and any(ord(character) < 32 and character not in "\n\r\t" for character in text):
         text = ""
-    if text:
+    if text or data == b"":
         stripped = text.strip()
         operation, urls = parse_uri_list(text)
         if urls:
@@ -502,7 +544,13 @@ def _inspect_payload(
                 "mimeType": "text/plain;charset=utf-8",
                 "icon": "link" if subtype == "url" else "content_paste",
                 "preview": text[:4096],
-                "searchText": text[:262144],
+                "searchText": text[:DETAIL_TEXT_LIMIT],
+                "characterCount": len(text),
+                "textLineCount": (1 + text.count("\n") + text.count("\r") - text.count("\r\n"))
+                if text
+                else 0,
+                "textTruncated": len(text) > DETAIL_TEXT_LIMIT,
+                "detailTextLimit": DETAIL_TEXT_LIMIT,
                 "multiline": multiline,
                 "lineCount": line_count,
             }
@@ -539,7 +587,7 @@ def lightweight(entry_id: str, preview: str) -> dict:
     else:
         operation, urls = parse_uri_list(preview)
         if urls:
-            files = [file_metadata(uri) for uri in urls]
+            files = [file_metadata(uri, inspect_preview=False) for uri in urls]
             result.update(
                 {
                     "payloadKind": "file-list" if len(files) > 1 else "file",
