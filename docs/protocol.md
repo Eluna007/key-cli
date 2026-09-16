@@ -397,3 +397,19 @@ install these OS packages. D-Bus waits at most 3 seconds, open acceptance waits
 an application that may already have been opened. Other action failures return
 `file_action_failed`; missing opener returns `dependency_missing` (3). Search
 cancellation never terminates applications opened by these independent requests.
+
+### Clipboard file theme icons
+
+Clipboard `files[]` elements now additionally include `themeIcon`: a semantic
+freedesktop theme icon name, using the same filename-based MIME policy as Files
+metadata's `icon` (`video-mp4`, `application-pdf`, or `folder` for directories).
+Unknown MIME types use `application-octet-stream` for this theme hint, while the
+existing Clipboard `mimeType` fallback remains unchanged. This is independent of
+Clipboard's existing `icon` / `category`: `icon` remains a Material Symbol name
+(e.g. `video_file`) and must not be used as a theme icon name. No envelope or
+schema version changes. Older responses may omit `themeIcon`; clients can derive
+a MIME hint and use generic theme / Material fallbacks.
+
+Theme hints require no file-content reads, search process, theme-directory scan
+or network access. The desktop resolves its current theme and handles missing or
+unloadable resources. File URIs, errors, copy/cut and restore bytes are unchanged.

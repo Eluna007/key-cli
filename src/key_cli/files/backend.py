@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import mimetypes
 import os
 from pathlib import Path
 import selectors
@@ -13,6 +12,7 @@ import sys
 import time
 
 from ..utils.output import fail, ok
+from ..utils.file_types import file_mime, theme_icon
 
 MAX_RESULTS = 50
 MAX_CANDIDATES = 400
@@ -106,11 +106,7 @@ def metadata(value):
             target = None
     directory = target is not None and stat.S_ISDIR(target.st_mode)
     regular = target is not None and stat.S_ISREG(target.st_mode)
-    mime = (
-        "inode/directory"
-        if directory
-        else mimetypes.guess_type(path.name, strict=False)[0] or "application/octet-stream"
-    )
+    mime = file_mime(path.name, directory) or "application/octet-stream"
     executable = regular and os.access(path, os.X_OK)
     return dict(
         name=path.name or str(path),
@@ -125,7 +121,7 @@ def metadata(value):
         isDirectory=directory,
         isSymlink=link,
         isExecutable=executable,
-        icon="folder" if directory else mime.replace("/", "-"),
+        icon=theme_icon(mime, directory),
         targetAvailable=target is not None,
     )
 

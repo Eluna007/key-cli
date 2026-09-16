@@ -496,3 +496,84 @@ def test_image_reference_read_failure_does_not_claim_readable_size(tmp_path, mon
     # Lightweight listings must not attempt to read image data.
     row = lightweight("1", path.as_uri())
     assert row["files"][0]["metadataStatus"] == "available"
+
+
+@pytest.mark.parametrize(
+    ("name", "material_icon", "category"),
+    [
+        ("movie.mp4", "video_file", "video"),
+        ("script.py", "code", "code"),
+        ("report.pdf", "picture_as_pdf", "pdf"),
+        ("archive.zip", "file_present", "file"),
+        ("sound.mp3", "audio_file", "audio"),
+        ("unknown.unrecognized-extension", "file_present", "file"),
+        ("folder", "folder", "folder"),
+    ],
+)
+def test_file_and_clipboard_theme_icons_share_filename_mime_policy(
+    tmp_path, monkeypatch, name, material_icon, category
+):
+    from pathlib import Path
+    from key_cli.files.backend import metadata
+
+    path = tmp_path / name
+    if category == "folder":
+        path.mkdir()
+    else:
+        path.write_bytes(b"do not read these contents for an icon")
+
+    def forbidden(*args, **kwargs):
+        pytest.fail("icon metadata must not read file contents or launch tools")
+
+    # Initialize Python's standard MIME registry before denying content reads.
+    metadata(str(path))
+    monkeypatch.setattr(Path, "open", forbidden)
+    monkeypatch.setattr(subprocess, "run", forbidden)
+    monkeypatch.setenv("PATH", "")
+    file = metadata(str(path))
+    clip = file_metadata(path.as_uri())
+    assert clip["themeIcon"] == file["icon"]
+    assert clip["themeIcon"] == (
+        "folder" if category == "folder" else file["mimeType"].replace("/", "-")
+    )
+    assert clip["icon"] == material_icon and clip["category"] == category
+    assert clip["uri"] == path.as_uri()
+    assert clip["previewUrl"] == ""
+    if category != "folder":
+        path.unlink()
+        missing = file_metadata(path.as_uri())
+        assert missing["themeIcon"] == clip["themeIcon"]
+        assert missing["metadataStatus"] == "missing"
+    remote = file_metadata("smb://host/share/" + name)
+    assert remote["local"] is False and remote["metadataStatus"] == "remote"
+    if category != "folder":
+        assert remote["themeIcon"] == clip["themeIcon"]
+
+
+@pytest.mark.parametrize("operation", ["copy", "cut"])
+def test_file_theme_icon_is_additive_to_inspect_and_restore(tmp_path, monkeypatch, operation):
+    path = tmp_path / "movie.mp4"
+    path.touch()
+    data = (operation + "\n" + path.as_uri() + "\n").encode()
+    copied = []
+    monkeypatch.setattr(backend, "executable", lambda name: name)
+    monkeypatch.setattr(
+        backend,
+        "run",
+        lambda *args, **kwargs: subprocess.CompletedProcess([], 0, stdout=data, stderr=b""),
+    )
+    monkeypatch.setattr(
+        backend,
+        "run_wl_copy",
+        lambda program, args, input_data: (
+            copied.append(input_data) or subprocess.CompletedProcess([], 0)
+        ),
+    )
+    result = backend.run_command(SimpleNamespace(action="inspect", id="12")).json()
+    assert result["schemaVersion"] == 1 and result["ok"]
+    assert result["payloadKind"] == "file" and result["fileOperation"] == operation
+    assert result["icon"] == "video_file"
+    assert result["files"][0]["themeIcon"] == "video-mp4"
+    assert result["files"][0]["uri"] == path.as_uri()
+    assert backend.run_command(SimpleNamespace(action="restore", id="12")).exit_code == 0
+    assert copied == [data]

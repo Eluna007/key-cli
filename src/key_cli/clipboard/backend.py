@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import fcntl
 import hashlib
-import mimetypes
 import os
 import re
 import shutil
@@ -17,6 +16,7 @@ from . import config
 
 from ..utils.output import DEPENDENCY_FAILURE, GENERAL_FAILURE, Result, error, fail
 from ..utils.executable import current_key_executable
+from ..utils.file_types import file_mime, theme_icon
 
 
 MAX_PAYLOAD = 64 * 1024 * 1024
@@ -350,6 +350,7 @@ def file_metadata(uri: str, inspect_preview: bool = True) -> dict:
         except OSError:
             pass
 
+    mime = file_mime(name, directory)
     value = {
         "uri": uri,
         "local": path is not None,
@@ -361,7 +362,8 @@ def file_metadata(uri: str, inspect_preview: bool = True) -> dict:
         "metadataAvailable": metadata_available,
         "metadataStatus": metadata_status,
         "modifiedTime": modified_time,
-        "mimeType": mimetypes.guess_type(name, strict=False)[0] or "",
+        "mimeType": mime,
+        "themeIcon": theme_icon(mime, directory),
         "category": "file",
         "icon": "file_present",
         "previewUrl": "",
