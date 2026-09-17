@@ -31,3 +31,10 @@ complete -c key -n '__fish_seen_subcommand_from file' -a 'status search open rev
 complete -c key -f -n '__fish_seen_subcommand_from file' -l format -a json
 complete -c key -f -n '__fish_seen_subcommand_from file; and __fish_seen_subcommand_from search' -l limit -x -d 'Maximum results (1–50)'
 complete -c key -n '__fish_seen_subcommand_from file; and __fish_seen_subcommand_from search' -l root -r -d 'Search root (repeatable; defaults to HOME)'
+
+complete -c key -f -n '__fish_use_subcommand' -a tool -d 'Spotlight calculator, currency and time tools'
+complete -c key -f -n '__fish_seen_subcommand_from tool; and not __fish_seen_subcommand_from status catalog calculator currency time' -a 'status catalog calculator currency time'
+complete -c key -f -n '__fish_seen_subcommand_from tool; and __fish_seen_subcommand_from catalog' -a 'calculator currency time'
+complete -c key -f -n '__fish_seen_subcommand_from tool' -l format -a json
+complete -c key -f -n '__fish_seen_subcommand_from tool; and __fish_seen_subcommand_from calculator currency time' -l expression -x -d 'Expression (use --expression=VALUE for a leading minus)'
+complete -c key -f -n '__fish_seen_subcommand_from tool; and __fish_seen_subcommand_from time' -l fold -x -a '0 1' -d 'Confirm a repeated local time'

@@ -413,3 +413,59 @@ a MIME hint and use generic theme / Material fallbacks.
 Theme hints require no file-content reads, search process, theme-directory scan
 or network access. The desktop resolves its current theme and handles missing or
 unloadable resources. File URIs, errors, copy/cut and restore bytes are unchanged.
+# Spotlight tools
+
+`key tool status`, `key tool catalog calculator|currency|time`, and
+`key tool calculator|currency|time --expression=VALUE` emit the existing JSON
+envelope by default (`schemaVersion: 1`, `command: tool.ACTION`, `ok`, `error`).
+`--format json` is accepted. Use the equals form for expressions beginning with
+a minus. These interfaces never modify clipboard, desktop preferences or timezone.
+
+`status.capabilities` reports calculator (optional `qalc`, Arch `libqalculate`),
+currency, and time (system IANA `tzdata`) independently. Old clients can ignore
+the new command group. `catalog` returns local `{text, name}` candidates and the
+tool name; it never evaluates or requests exchange rates. QML owns UTF-16 token
+ranges; this protocol does not return cursor indices.
+
+Evaluation `state` is `empty`, `incomplete`, `valid`, `ambiguous` (time only),
+`error`, or `unavailable`. Only `valid` contains a copyable `answer`. Errors use
+the existing exit codes: 2 for input, 3 for missing dependencies/data, 1 for
+evaluation/network/timeout failure. Consumers must reject obsolete request IDs
+and clear the copyable result immediately when input changes.
+
+Calculator accepts arithmetic, parentheses, comparisons, a finite set of common
+functions/constants and ordinary units. The local catalog describes this set.
+It rejects commands, assignment, strings, imports, plots and arbitrary functions.
+qalc uses isolated temporary HOME/XDG directories, no currencies/datasets, and
+explicitly disabled exchange updates/config/history saving. Limits: 1,024 input
+characters, 1.5 seconds qalc evaluation, 2.5 seconds wall time, 16 KiB combined
+output. Cancellation kills and reaps the process group. Diagnostics (including
+warnings) are errors, never answers. See the [qalc options](https://qalculate.github.io/manual/qalc.html).
+
+Currency syntax: `100 USD to CNY` (case-insensitive). Only current ECB reference
+currencies in the local catalog are accepted; ambiguous symbols are not inferred.
+The fixed source is `frankfurter-v2-ecb`, using
+`https://api.frankfurter.dev/v2/providers/ecb/rate/BASE/QUOTE` as documented by
+[Frankfurter v2](https://frankfurter.dev/). Amounts are calculated locally with
+Decimal (50 significant digits) and never sent to the API. `amount`, `converted`
+and `rate` are decimal strings. `date` is the provider's data date; `fetchedAt` is
+the Unix retrieval time. `cache` is `fresh`, `cached`, `stale` or `identity`;
+`approximate` distinguishes reference conversions from same-currency identity.
+The UI must show the date/stale status and label conversions as approximate.
+Per-source/pair cache files under `$XDG_CACHE_HOME/key-cli/currency` refresh on
+demand after 24 hours, with per-pair request merging and a 60-second failure
+backoff. Network timeout is five seconds, response limit 16 KiB. A stale rate is
+usable; absent rates never produce a fabricated answer. Same-currency conversion
+does not access the network or cache.
+
+Time syntax: `now to Asia/Tokyo`, `09:00 America/Los_Angeles to Asia/Shanghai`,
+or `2026-09-17 09:00 America/Los_Angeles to Asia/Shanghai`. Missing source uses
+the system IANA/tzfile rules, not today's fixed offset. Missing date uses the
+source zone's date at `evaluatedAt`. `source` and `target` include ISO datetime,
+date, IANA zone (or `system` for a copied local tzfile), UTC offset and `fold`;
+`dayDelta` describes the difference in calendar dates. No network is used.
+Nonexistent DST times fail; repeated times return `state: ambiguous` and two
+`candidates`. The client must explicitly confirm one using `--fold 0|1` before
+copying an answer. Ambiguous abbreviations such as CST are rejected. Local
+catalog aliases resolve to explicit IANA names. See Python's
+[zoneinfo](https://docs.python.org/3/library/zoneinfo.html).

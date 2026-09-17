@@ -7,6 +7,8 @@ import os
 import sys
 from pathlib import Path
 from ..keyboard.backend import responses
+from .tool import run as tool_status
+from argparse import Namespace
 from ..files.backend import status as file_status
 from ..clipboard.backend import watcher_running
 from typing import Any
@@ -16,6 +18,7 @@ from ..utils.output import DEPENDENCY_FAILURE, Result
 
 
 COMMANDS = {
+    "qalc": {"features": ["calculator"]},
     "gio": {"features": ["file-open", "file-reveal-fallback"]},
     "qs": {"features": ["shell", "ipc"]},
     "gpu-screen-recorder": {"features": ["record"]},
@@ -135,6 +138,8 @@ def run(args) -> Result:
         "clipboard-restore": all(commands[name]["available"] for name in ("cliphist", "wl-copy")),
         "clipboard-watch": all(commands[name]["available"] for name in ("cliphist", "wl-paste")),
     }
+    tools = tool_status(Namespace(action="status")).json()
+    features.update(tools["capabilities"])
     files = file_status().json()
     features.update(
         {
@@ -180,6 +185,7 @@ def run(args) -> Result:
         "missing": missing,
         "keyboard": keyboard,
         "file": files,
+        "tools": tools,
         "clipboard": {"watcherRunning": watching, "services": services},
         "installation": {**installation_details(), "overrides": overrides},
         "runtimeReady": runtime_ready,

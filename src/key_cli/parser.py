@@ -11,6 +11,7 @@ from .commands.ipc import run as ipc
 from .commands.record import run as record
 from .commands.shell import run as shell
 from .commands.version import run as version
+from .commands.tool import run as tool
 
 
 def _json(parser: argparse.ArgumentParser) -> None:
@@ -29,6 +30,33 @@ def build_parser() -> argparse.ArgumentParser:
         help="print the key-cli version",
     )
     commands = parser.add_subparsers(dest="command", metavar="COMMAND")
+
+    tool_parser = commands.add_parser(
+        "tool", help="evaluate Spotlight calculator, currency and time tools"
+    )
+    tool_parser.set_defaults(handler=tool)
+    tool_commands = tool_parser.add_subparsers(dest="action", required=True)
+    tool_status = tool_commands.add_parser(
+        "status", help="inspect tool capabilities without starting calculations"
+    )
+    tool_status.add_argument("--format", choices=["json"], default="json")
+    tool_catalog = tool_commands.add_parser(
+        "catalog", help="read local completion names without evaluating"
+    )
+    tool_catalog.add_argument("tool", choices=["calculator", "currency", "time"])
+    tool_catalog.add_argument("--format", choices=["json"], default="json")
+    for name in ("calculator", "currency", "time"):
+        evaluate = tool_commands.add_parser(name, help=f"evaluate the {name} expression")
+        evaluate.add_argument(
+            "--expression",
+            required=True,
+            help="expression; use --expression=VALUE for a leading minus",
+        )
+        evaluate.add_argument("--format", choices=["json"], default="json")
+        if name == "time":
+            evaluate.add_argument(
+                "--fold", type=int, choices=[0, 1], help="confirm a repeated local time candidate"
+            )
 
     shell_parser = commands.add_parser(
         "shell", help="start, stop, or inspect the Clavis Quickshell"

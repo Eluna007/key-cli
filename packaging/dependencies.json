@@ -167,6 +167,16 @@
           "package": "xdg-terminal-exec",
           "purpose": "Terminal file managers",
           "defaultInstall": true
+        },
+        {
+          "package": "libqalculate",
+          "purpose": "Spotlight calculator (qalc)",
+          "defaultInstall": false
+        },
+        {
+          "package": "tzdata",
+          "purpose": "Spotlight IANA time zone conversions",
+          "defaultInstall": false
         }
       ]
     },

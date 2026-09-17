@@ -17,6 +17,17 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         args = parser.parse_args(arguments)
     except SystemExit as exc:
+        if exc.code == 2 and arguments[:1] == ["tool"]:
+            action = (
+                arguments[1]
+                if len(arguments) > 1
+                and arguments[1] in {"status", "catalog", "calculator", "currency", "time"}
+                else "unknown"
+            )
+            return emit_result(
+                fail("tool." + action, 2, "invalid_arguments", "Invalid tool command arguments"),
+                True,
+            )
         if exc.code == 2 and arguments[:1] == ["file"]:
             action = (
                 arguments[1]
