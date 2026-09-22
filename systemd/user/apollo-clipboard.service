@@ -1,6 +1,6 @@
 [Unit]
-Description=Clavis clipboard watcher
-Documentation=https://github.com/StatIndet/quickshell
+Description=Apollo clipboard watcher
+Documentation=https://github.com/Eluna007/ApolloDot
 Requisite=niri.service
 PartOf=niri.service
 After=niri.service

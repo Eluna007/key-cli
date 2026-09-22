@@ -4,9 +4,9 @@ pkgbase=key-cli
 pkgname=('key-cli' 'key-cli-keyboard-access')
 pkgver=@PKGVER@
 pkgrel=@PKGREL@
-pkgdesc='Clavis command interface, clipboard backend and keyboard events'
+pkgdesc='Apollo command interface, clipboard backend and keyboard events'
 arch=('any')
-url='https://github.com/StatIndet/key-cli'
+url='https://github.com/Eluna007/key-cli'
 license=('GPL-3.0-or-later')
 # Pure Python and udev data contain no ELF debug symbols to split out.
 options=('!debug')
@@ -31,7 +31,7 @@ package_key-cli() {
     optdepends=@KEY_CLI_OPTDEPENDS@
     cd "key-cli-${pkgver}" || return
     python -m installer --destdir="${pkgdir}" --prefix=/usr dist/*.whl
-    install -Dm644 systemd/user/clavis-clipboard.service "${pkgdir}/usr/lib/systemd/user/clavis-clipboard.service"
+    install -Dm644 systemd/user/apollo-clipboard.service "${pkgdir}/usr/lib/systemd/user/apollo-clipboard.service"
     install -Dm644 completions/key.fish "${pkgdir}/usr/share/fish/vendor_completions.d/key.fish"
     install -Dm644 docs/installation.md "${pkgdir}/usr/share/doc/key-cli/installation.md"
 }
@@ -40,6 +40,6 @@ package_key-cli-keyboard-access() {
     pkgdesc='Optional whole evdev keyboard device access for active local users'
     depends=@KEY_CLI_KEYBOARD_ACCESS_DEPENDS@
     cd "key-cli-${pkgver}" || return
-    install -Dm644 packaging/udev/71-clavis-keyboard-leds.rules "${pkgdir}/usr/lib/udev/rules.d/71-clavis-keyboard-leds.rules"
+    install -Dm644 packaging/udev/71-apollo-keyboard-leds.rules "${pkgdir}/usr/lib/udev/rules.d/71-apollo-keyboard-leds.rules"
     install -Dm644 docs/installation.md "${pkgdir}/usr/share/doc/key-cli-keyboard-access/installation.md"
 }

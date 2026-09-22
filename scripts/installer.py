@@ -16,8 +16,8 @@ import tempfile
 import venv
 
 BASE = Path(__file__).resolve().parent.parent
-RULE = "71-clavis-keyboard-leds.rules"
-UNIT = "clavis-clipboard.service"
+RULE = "71-apollo-keyboard-leds.rules"
+UNIT = "apollo-clipboard.service"
 
 
 def run(argv):
@@ -153,7 +153,7 @@ def dev_services(args):
     paths = [
         user / UNIT,
         user / f"{UNIT}.d/80-key-cli-development.conf",
-        user / "clavis-shell.service.d/80-key-cli-development.conf",
+        user / "apollo-shell.service.d/80-key-cli-development.conf",
     ]
     owned = OwnedFiles(user / "key-cli-development.json", paths, config, "development")
     if args.dev_services == "disable":
@@ -174,11 +174,11 @@ def dev_services(args):
         if not base_exists and not paths[0].exists():
             owned.write(paths[0], (BASE / "systemd/user" / UNIT).read_bytes())
         owned.write(paths[1], unit_override(key, "clipboard watch"))
-        if args.clavis_unit:
-            source = Path(args.clavis_unit).resolve()
-            if source.name != "clavis-shell.service" or not source.is_file():
-                raise ValueError("--clavis-unit must name Clavis's existing clavis-shell.service")
-            # Keep ownership of Shell's base unit in the Clavis repository.
+        if args.apollo_unit:
+            source = Path(args.apollo_unit).resolve()
+            if source.name != "apollo-shell.service" or not source.is_file():
+                raise ValueError("--apollo-unit must name Apollo's existing apollo-shell.service")
+            # Keep ownership of Shell's base unit in the Apollo repository.
             print(
                 f"If the base unit is not installed, run: systemctl --user link {shlex.quote(str(source))}"
             )
@@ -203,7 +203,7 @@ def keyboard(args):
         return
     if not args.acknowledge_keyboard_access:
         raise ValueError(
-            "Keyboard authorization grants whole event-device access, including raw keys, to the active user, not LED-only or Clavis-only. Repeat with --acknowledge-keyboard-access to opt in."
+            "Keyboard authorization grants whole event-device access, including raw keys, to the active user, not LED-only or Apollo-only. Repeat with --acknowledge-keyboard-access to opt in."
         )
     source = resources[share / "packaging/udev" / RULE].read_bytes()
     # Never adopt someone else's rule. Respect /etc masking and package-provided rules.
@@ -326,7 +326,7 @@ def main():
     action.add_argument("--keyboard", choices=["enable", "disable"])
     action.add_argument("--clipboard", choices=["enable", "disable"])
     parser.add_argument(
-        "--clavis-unit", help="Clavis-owned base unit for optional development override"
+        "--apollo-unit", help="Apollo-owned base unit for optional development override"
     )
     parser.add_argument("--acknowledge-keyboard-access", action="store_true")
     parser.add_argument(
@@ -344,12 +344,12 @@ def main():
     try:
         if args.keyboard == "enable" and not args.acknowledge_keyboard_access:
             raise ValueError(
-                "Whole keyboard event-device access includes raw keys and is not LED-only or Clavis-only. Opt in with --acknowledge-keyboard-access."
+                "Whole keyboard event-device access includes raw keys and is not LED-only or Apollo-only. Opt in with --acknowledge-keyboard-access."
             )
         if args.apply and (args.keyboard != "enable" or args.root != Path("/")):
             raise ValueError("--apply requires --keyboard enable at the real system root")
-        if args.clavis_unit and args.dev_services != "enable":
-            raise ValueError("--clavis-unit requires --dev-services enable")
+        if args.apollo_unit and args.dev_services != "enable":
+            raise ValueError("--apollo-unit requires --dev-services enable")
         if not args.root.is_absolute() or args.root != args.root.resolve():
             raise ValueError("Root must be an absolute, canonical directory")
         if os.geteuid() == 0 and not args.deploy:

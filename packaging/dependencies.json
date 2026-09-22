@@ -1,6 +1,6 @@
 {
   "name": "key-cli",
-  "repository": "StatIndet/key-cli",
+  "repository": "Eluna007/key-cli",
   "versionFile": "src/key_cli/VERSION",
   "arch": "any",
   "sourceRoots": [

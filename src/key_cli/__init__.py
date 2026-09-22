@@ -1,4 +1,4 @@
-"""The stable, small command line boundary for Clavis."""
+"""The stable, small command line boundary for Apollo."""
 
 from __future__ import annotations
 

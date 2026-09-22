@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 # Runs only inside an ephemeral Arch CI container, never on the developer host.
 set -euo pipefail
-[[ ${CLAVIS_CI_CONTAINER:-} == 1 && -f /.dockerenv && $(id -u) == 0 ]] || {
+[[ ${APOLLO_CI_CONTAINER:-} == 1 && -f /.dockerenv && $(id -u) == 0 ]] || {
     printf 'arch.sh requires the disposable Arch CI container.\n' >&2
     exit 1
 }
 root=$(git rev-parse --show-toplevel)
 cd "$root"
 if ! id builder >/dev/null 2>&1; then useradd --create-home builder; fi
-printf 'builder ALL=(root) NOPASSWD: /usr/bin/pacman\n' > /etc/sudoers.d/clavis-builder
-chmod 440 /etc/sudoers.d/clavis-builder
+printf 'builder ALL=(root) NOPASSWD: /usr/bin/pacman\n' > /etc/sudoers.d/apollo-builder
+chmod 440 /etc/sudoers.d/apollo-builder
 chown -R builder:builder "$root"
 
 dependency_text=$(python3 scripts/release.py dependencies --ci)
@@ -35,11 +35,11 @@ done
 actionlint
 name=$(python3 -c 'import json; print(json.load(open("packaging/dependencies.json"))["name"])')
 export QT_QPA_PLATFORM=offscreen QT_QPA_PLATFORMTHEME=
-export XDG_RUNTIME_DIR=/tmp/clavis-ci-runtime
+export XDG_RUNTIME_DIR=/tmp/apollo-ci-runtime
 install -d -m 700 -o builder -g builder "$XDG_RUNTIME_DIR"
 runuser -u builder -- python3 scripts/release.py bundle-resources --cache .packaging/resource-cache
 case $name in
-    clavis-shell) runuser -u builder -- scripts/dev/check.sh --full ;;
+    apollo-shell) runuser -u builder -- scripts/dev/check.sh --full ;;
     key-cli) runuser -u builder -- scripts/check.sh --build ;;
     keytop) runuser -u builder -- make check ;;
     *) exit 2 ;;
@@ -56,7 +56,7 @@ runuser -u builder -- python3 scripts/release.py render --archive "$archive" --o
 )
 if [[ $name == key-cli ]]; then
     runuser -u builder -- python3 -m build --wheel --no-isolation --outdir .packaging/release
-elif [[ $name == clavis-shell ]]; then
+elif [[ $name == apollo-shell ]]; then
     runuser -u builder -- python3 scripts/release.py installer --output .packaging/release/install-arch.sh
 fi
 # Pacman binaries are CI diagnostics; releases distribute source, metadata and wheels.

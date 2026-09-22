@@ -21,9 +21,9 @@ def run_qs(arguments: Sequence[str], command: str) -> Result:
         )
     environment = os.environ.copy()
     # Quickshell must use the same key-cli executable that launched it.  Do
-    # not inherit a stale CLAVIS_KEY from a different installation when this
+    # not inherit a stale APOLLO_KEY from a different installation when this
     # process was invoked through an explicit executable path.
-    environment["CLAVIS_KEY"] = current_key_executable(prefer_environment=False)
+    environment["APOLLO_KEY"] = current_key_executable(prefer_environment=False)
     try:
         completed = subprocess.run([program, *arguments], check=False, env=environment)
     except OSError as exc:
@@ -39,16 +39,16 @@ def run_qs(arguments: Sequence[str], command: str) -> Result:
 
 def run(args) -> Result:
     if args.kill:
-        return run_qs(["-c", "clavis", "kill"], "shell.kill")
+        return run_qs(["-c", "apollo", "kill"], "shell.kill")
     if args.log:
-        command = ["-c", "clavis", "log"]
+        command = ["-c", "apollo", "log"]
         if args.log_rules:
             command += ["-r", args.log_rules]
         return run_qs(command, "shell.log")
     if args.show:
-        return run_qs(["-c", "clavis", "ipc", "show"], "shell.ipc")
+        return run_qs(["-c", "apollo", "ipc", "show"], "shell.ipc")
 
-    command = ["-c", "clavis", "-n"]
+    command = ["-c", "apollo", "-n"]
     if args.daemon:
         command.append("-d")
     if args.log_rules:

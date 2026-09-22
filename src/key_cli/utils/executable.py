@@ -29,7 +29,7 @@ def current_key_executable(*, prefer_environment: bool = True) -> str:
         if resolved:
             return resolved
 
-    configured = os.environ.get("CLAVIS_KEY", "").strip()
+    configured = os.environ.get("APOLLO_KEY", "").strip()
     if prefer_environment:
         resolved = _resolved_executable(configured)
         if resolved:

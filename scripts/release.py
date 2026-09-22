@@ -90,7 +90,7 @@ def fetch_resource(resource, cache):
     cache.mkdir(parents=True, exist_ok=True)
     target = cache / (resource["sha256"] + ".tgz")
     if not target.exists() or sha256(target) != resource["sha256"]:
-        request = urllib.request.Request(resource["url"], headers={"User-Agent": "Clavis-release"})
+        request = urllib.request.Request(resource["url"], headers={"User-Agent": "Apollo-release"})
         with urllib.request.urlopen(request, timeout=60) as response:
             payload = response.read()
         if hashlib.sha256(payload).hexdigest() != resource["sha256"]:
@@ -181,7 +181,7 @@ def source_archive(output, working_tree=False, root=ROOT):
     output.mkdir(parents=True, exist_ok=True)
     commit = git("rev-parse", "HEAD", root=root).decode().strip()
     epoch = int(git("show", "-s", "--format=%ct", "HEAD", root=root))
-    with tempfile.TemporaryDirectory(prefix="clavis-source-") as temporary:
+    with tempfile.TemporaryDirectory(prefix="apollo-source-") as temporary:
         tree = Path(temporary) / f"{data['name']}-{release_version}"
         tree.mkdir()
         if working_tree:
@@ -301,7 +301,7 @@ def verify_assets(directory, tag, commit, root=ROOT):
         records[match[2]] = match[1]
     source_name = f"{data['name']}-{release_version}.tar.gz"
     required = {"PKGBUILD", ".SRCINFO", source_name}
-    if data["name"] == "clavis-shell":
+    if data["name"] == "apollo-shell":
         required.add("install-arch.sh")
     wheel_name = f"key_cli-{release_version}-py3-none-any.whl"
     if data["name"] == "key-cli":

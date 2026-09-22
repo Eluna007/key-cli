@@ -1,7 +1,7 @@
 # key-cli machine protocol
 
 `key-cli` owns the machine-facing JSON emitted by the `key` command. This document
-describes the stable external contract consumed by Clavis. A breaking response change
+describes the stable external contract consumed by Apollo. A breaking response change
 requires updates here and a corresponding public-contract test; Python module layout and
 function names are not part of the protocol.
 
@@ -80,7 +80,7 @@ are displayed literally and restored as plain text. Preview truncation and displ
 summaries never modify the saved payload. The classification may differ from the
 original type, especially when text itself contains valid file-list syntax.
 
-Consumers such as Clavis should keep validating the envelope and the capabilities
+Consumers such as Apollo should keep validating the envelope and the capabilities
 they use, accept additive capability fields, and display clipboard text with an
 explicit plain-text mode. Missing new fields on older key-cli builds do not imply
 support for multi-MIME or original MIME preservation.

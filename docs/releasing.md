@@ -15,13 +15,13 @@ PR and build jobs keep read-only repository access and receive no publishing cre
 
 The workflows publish GitHub Releases and Arch packaging files. They do not upload packages
 to AUR or require this project's packages to be registered there. Package bases remain
-`key-cli`, `keytop` and `clavis-shell`; the optional access packages remain split outputs.
-Clavis's build still downloads external AUR build dependencies such as `libcava` and
+`key-cli`, `keytop` and `apollo-shell`; the optional access packages remain split outputs.
+Apollo's build still downloads external AUR build dependencies such as `libcava` and
 `qt6-m3shapes-git` anonymously, so availability of those sources can still affect its build.
 
-For the initial rollout publish key-cli, then keytop, then Clavis. Clavis records minimum backend
+For the initial rollout publish key-cli, then keytop, then Apollo. Apollo records minimum backend
 versions in its runtime dependencies. Publishing one project does not build, test or release a
-sibling repository. Later updates remain independent; change Clavis's minimum dependency only
+sibling repository. Later updates remain independent; change Apollo's minimum dependency only
 when its public backend requirements change. Machine `schemaVersion` is unrelated to the date version.
 
 ## Normal release
@@ -42,7 +42,7 @@ Select the source commit/branch/tag in `ref`. The workflow:
 
 Source archives use a whitelist of tracked roots, normalized ownership/modes and commit timestamps.
 They exclude local profiles, caches and uncommitted files. `RELEASE.json` records the exact release
-commit and build timestamp. Clavis's complete source asset also includes checksum-pinned weather
+commit and build timestamp. Apollo's complete source asset also includes checksum-pinned weather
 resources and their license; GitHub's automatic tag archive is not a substitute for that asset.
 Public assets are source, package metadata, checksums, optional installer, and the key-cli wheel.
 Pacman binaries are validated in CI but are not a supported binary installation channel.
@@ -69,9 +69,9 @@ For a packaging-only fix, download the existing release source asset and render 
 with `--pkgrel 2` (or the next revision), then review it for local builds or later manual AUR
 publication. Keep the source version/hash unchanged and do not replace published assets.
 
-The Clavis one-command installer resolves first-party packages from GitHub Releases, including
-both optional permission packages. Publish key-cli and keytop first, then Clavis with the updated
-installer. Clavis is pinned to the installer's release; each backend uses its latest formal
+The Apollo one-command installer resolves first-party packages from GitHub Releases, including
+both optional permission packages. Publish key-cli and keytop first, then Apollo with the updated
+installer. Apollo is pinned to the installer's release; each backend uses its latest formal
 release and must meet the declared minimum version. Missing assets or failed checksum/version
 checks stop installation; first-party resolution does not fall back to AUR. Third-party AUR
 dependencies remain unchanged. Source development entry points remain available in each repository.
@@ -91,7 +91,7 @@ only the tested commit. The resulting source asset is already in makepkg's sourc
 its release URL does not need to exist for local builds. Run makepkg there as an ordinary user;
 do not use `--install` or `--syncdeps` when only validating artifacts on your development host.
 `python3 scripts/check-package.py PATH_TO_EACH_PACKAGE` checks actual package resources and metadata.
-Clavis can also render the standalone installer with `scripts/release.py installer --output PATH`.
+Apollo can also render the standalone installer with `scripts/release.py installer --output PATH`.
 
 `scripts/ci/arch.sh` is intentionally restricted to the disposable Arch container; it installs
 build dependencies inside that container and must not be used as a host setup script. Local

@@ -54,7 +54,7 @@ def safe_version(program: str) -> str | None:
 def installation_details():
     config = Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config")
     units = {}
-    for unit in ("clavis-clipboard.service", "clavis-shell.service"):
+    for unit in ("apollo-clipboard.service", "apollo-shell.service"):
         try:
             probe = subprocess.run(
                 [
@@ -81,7 +81,7 @@ def installation_details():
         "/usr/local/lib/udev/rules.d",
         "/usr/lib/udev/rules.d",
     ):
-        path = Path(directory) / "71-clavis-keyboard-leds.rules"
+        path = Path(directory) / "71-apollo-keyboard-leds.rules"
         if path.exists() or path.is_symlink():
             resources.append(
                 {
@@ -99,7 +99,7 @@ def installation_details():
         ),
         "pythonExecutable": sys.executable,
         "modulePath": str(Path(__file__).resolve().parents[1]),
-        "clavisKey": os.environ.get("CLAVIS_KEY"),
+        "apolloKey": os.environ.get("APOLLO_KEY"),
         "userUnits": units,
         "keyboardRules": resources,  # highest precedence first
         "sourceManifest": "/usr/local/share/key-cli/install-manifest.json"
@@ -153,7 +153,7 @@ def run(args) -> Result:
     keyboard = next(responses()).json()
     watching = watcher_running()
     services = {}
-    for unit in ("niri.service", "clavis-clipboard.service"):
+    for unit in ("niri.service", "apollo-clipboard.service"):
         try:
             probe = subprocess.run(
                 ["systemctl", "--user", "is-active", unit],
@@ -169,9 +169,9 @@ def run(args) -> Result:
     overrides = [
         str(path)
         for path in (
-            Path("/etc/udev/rules.d/71-clavis-keyboard-leds.rules"),
-            config / "systemd/user/clavis-clipboard.service",
-            Path("/usr/local/lib/systemd/user/clavis-clipboard.service"),
+            Path("/etc/udev/rules.d/71-apollo-keyboard-leds.rules"),
+            config / "systemd/user/apollo-clipboard.service",
+            Path("/usr/local/lib/systemd/user/apollo-clipboard.service"),
         )
         if path.exists() or path.is_symlink()
     ]

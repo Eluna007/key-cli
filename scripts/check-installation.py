@@ -35,7 +35,7 @@ def main():
         python = root / "usr/local/lib/key-cli/venv/bin/python"
         imported = output(python, "import key_cli; print(key_cli.__file__)")
         assert str(root) in imported and str(repo) not in imported
-        unit = root / "usr/local/lib/systemd/user/clavis-clipboard.service"
+        unit = root / "usr/local/lib/systemd/user/apollo-clipboard.service"
         assert str(root / "usr/local/bin/key") in unit.read_text()
         assert not (root / "etc/udev/rules.d" / installer.RULE).exists()
         assert not (root / "usr/local/share/key-cli/keyboard-manifest.json").exists()

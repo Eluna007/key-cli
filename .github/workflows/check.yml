@@ -14,7 +14,7 @@ jobs:
     container: archlinux:base-devel
     timeout-minutes: 60
     env:
-      CLAVIS_CI_CONTAINER: '1'
+      APOLLO_CI_CONTAINER: '1'
     steps:
       - name: Bootstrap disposable Arch container
         run: pacman -Syu --needed --noconfirm git python sudo
@@ -37,5 +37,5 @@ jobs:
             .packaging/release/PKGBUILD
             .packaging/release/.SRCINFO
             .packaging/release/SHA256SUMS
-            /tmp/clavis-check.*/*.log
+            /tmp/apollo-check.*/*.log
             build/Testing/Temporary/LastTest.log

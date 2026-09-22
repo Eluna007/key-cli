@@ -19,7 +19,7 @@ jobs:
     outputs:
       tag: ${{ steps.version.outputs.tag }}
     env:
-      CLAVIS_CI_CONTAINER: '1'
+      APOLLO_CI_CONTAINER: '1'
     steps:
       - name: Bootstrap disposable Arch container
         run: pacman -Syu --needed --noconfirm git python sudo
@@ -67,7 +67,7 @@ jobs:
         with:
           name: release-logs
           path: |
-            /tmp/clavis-check.*/*.log
+            /tmp/apollo-check.*/*.log
             build/Testing/Temporary/LastTest.log
   publish:
     needs: build
