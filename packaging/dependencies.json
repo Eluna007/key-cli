@@ -59,6 +59,11 @@
       "package": "git",
       "purpose": "Isolated source archive contract fixtures",
       "defaultInstall": true
+    },
+    {
+      "package": "shared-mime-info",
+      "purpose": "MIME database for the GIO desktop open contracts",
+      "defaultInstall": true
     }
   ],
   "ci": [
@@ -124,6 +129,11 @@
         {
           "package": "glib2",
           "purpose": "GIO desktop opening with Terminal=true support",
+          "defaultInstall": true
+        },
+        {
+          "package": "shared-mime-info",
+          "purpose": "XDG MIME database GIO reads to resolve file content types",
           "defaultInstall": true
         }
       ],
