@@ -4,8 +4,8 @@
 
 key-cli is an independent repository. It owns the `key shell`, `key ipc`, `key record`,
 `key audio`, `key keyboard`, `key clipboard` and `key doctor` commands, their backend/process identity
-behavior, packaging, and the machine-facing JSON protocol. Clavis consumes these public
-interfaces; key-cli tests must not depend on `../clavis` or `../keytop`.
+behavior, packaging, and the machine-facing JSON protocol. Apollo consumes these public
+interfaces; key-cli tests must not depend on `../apollo` or `../keytop`.
 
 ## Test policy
 

@@ -5,7 +5,7 @@ Release tooling generates PKGBUILD dependency fields from this inventory. `defau
 selects the full installation profile; optional authorization and vendor GPU drivers are never implicit.
 
 Runtime-only dependencies are assigned in package functions, so this repository builds and
-tests independently of other Clavis repositories. CI installs only build, check and CI entries.
+tests independently of other Apollo repositories. CI installs only build, check and CI entries.
 
 ## Build
 

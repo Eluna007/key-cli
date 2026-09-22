@@ -28,8 +28,11 @@ def isolated_desktop(tmp_path, monkeypatch):
     system.mkdir()
     # Only MIME definitions, never the host's application catalog or associations.
     mime = Path("/usr/share/mime")
-    if mime.is_dir():
-        (system / "mime").symlink_to(mime)
+    if not mime.is_dir():
+        # Without the XDG database GIO reports application/octet-stream for every
+        # file, so association tests would fail as if the lookup were wrong.
+        pytest.skip("GIO content-type detection requires the shared-mime-info database")
+    (system / "mime").symlink_to(mime)
     for name, value in {
         "HOME": tmp_path,
         "XDG_CONFIG_HOME": config,

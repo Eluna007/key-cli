@@ -28,17 +28,17 @@ directory. It resets ExecStart to this checkout's absolute `.venv/bin/key clipbo
 If no loaded base unit exists, it deploys the existing repository unit into the user's
 unit directory. It does not replace someone else's base unit.
 
-For Clavis, whose lifecycle remains owned by the Clavis repository:
+For Apollo, whose lifecycle remains owned by the Apollo repository:
 
 ```bash
-./scripts/install.sh --dev-services enable --clavis-unit ~/Projects/clavis/packaging/systemd/user/clavis-shell.service
+./scripts/install.sh --dev-services enable --apollo-unit ~/Projects/ApolloDot/packaging/systemd/user/apollo-shell.service
 ```
 
-If the Clavis base unit is not installed, follow the printed `systemctl --user link`
-command, which links Clavis's existing unit. The generated drop-in invokes
+If the Apollo base unit is not installed, follow the printed `systemctl --user link`
+command, which links Apollo's existing unit. The generated drop-in invokes
 `.venv/bin/key shell --foreground --no-duplicate`. No fish subprocess or activation
-script is involved. `key shell` supplies CLAVIS_KEY automatically. Direct `qs` launches
-still require explicitly selecting CLAVIS_KEY. Clipboard callbacks use their current key.
+script is involved. `key shell` supplies APOLLO_KEY automatically. Direct `qs` launches
+still require explicitly selecting APOLLO_KEY. Clipboard callbacks use their current key.
 
 After configuration, activate clipboard only when wanted:
 
@@ -48,8 +48,8 @@ After configuration, activate clipboard only when wanted:
 
 This checks active niri.service before `enable --now`; it never starts niri. To switch
 an already running watcher after code changes, explicitly use
-`systemctl --user restart clavis-clipboard.service`. The existing singleton lock prevents
-duplicate capture; no pkill is used. Clavis restart remains your separate choice.
+`systemctl --user restart apollo-clipboard.service`. The existing singleton lock prevents
+duplicate capture; no pkill is used. Apollo restart remains your separate choice.
 Clipboard capture survives Shell restarts.
 
 ```bash
@@ -59,7 +59,7 @@ systemctl --user daemon-reload
 
 Only manifest-owned, unchanged files are removed. Other user drop-ins remain. If this
 tool supplied the only clipboard base unit, install a source/distribution unit before
-restarting capture. A separately linked Clavis base unit remains Clavis-owned. Review
+restarting capture. A separately linked Apollo base unit remains Apollo-owned. Review
 fish PATH and restart selected processes to return to the installed version; no whole
 fish_user_paths or unit directory is cleared.
 
@@ -85,12 +85,12 @@ for other users. The CLI and all watchers still run as the desktop user.
 | --- | --- |
 | Dedicated environment | `/usr/local/lib/key-cli/venv/` |
 | Stable entry symlink | `/usr/local/bin/key` |
-| Clipboard base unit | `/usr/local/lib/systemd/user/clavis-clipboard.service` |
+| Clipboard base unit | `/usr/local/lib/systemd/user/apollo-clipboard.service` |
 | Fish completion | `/usr/local/share/fish/vendor_completions.d/key.fish` |
 | Installer, uninstaller and resource sources | `/usr/local/share/key-cli/` |
 | Program ownership manifest | `/usr/local/share/key-cli/install-manifest.json` |
 | Independent authorization manifest | `/usr/local/share/key-cli/keyboard-manifest.json` |
-| Optional rule | `/etc/udev/rules.d/71-clavis-keyboard-leds.rules` |
+| Optional rule | `/etc/udev/rules.d/71-apollo-keyboard-leds.rules` |
 | Development ownership manifest | `$XDG_CONFIG_HOME/systemd/user/key-cli-development.json` (default `~/.config`) |
 
 Update by rerunning `./scripts/install.sh`. It recreates only its owned venv after wheels are ready and installs those fresh wheels,
@@ -112,7 +112,7 @@ After removing the checkout:
 ```
 
 Stop the selected clipboard watcher first if it uses the installation being removed:
-`systemctl --user disable --now clavis-clipboard.service`. Neither uninstall nor update
+`systemctl --user disable --now apollo-clipboard.service`. Neither uninstall nor update
 stops ongoing recordings, Shell or other processes automatically. After removal run
 `systemctl --user daemon-reload`. Programs already running may still hold loaded code.
 
@@ -133,7 +133,7 @@ This is independent of source program installation and works from an editable ch
 ```
 
 The acknowledgement grants the active user's processes access to the **whole keyboard
-event device**, including raw input, not only LEDs or Clavis. No input-group membership,
+event device**, including raw input, not only LEDs or Apollo. No input-group membership,
 chmod 666, root daemon or polling fallback is added. Without `--apply`, devices are not
 reloaded/triggered. With it, reload/trigger occurs only for newly written/changed rules.
 Existing equivalent external rules are retained without copying or adopting them;
@@ -159,10 +159,10 @@ Do not treat removal as a universal ACL revocation.
 ## Existing installations and diagnostics
 
 Start with `key doctor --json`, `type -a key` and
-`systemctl --user cat clavis-clipboard.service clavis-shell.service`.
+`systemctl --user cat apollo-clipboard.service apollo-shell.service`.
 Doctor separately reports invocation, resolved current key, Python interpreter, actual
-module path, PATH default, inherited CLAVIS_KEY, effective unit paths/drop-ins/ExecStart,
-and known rule precedence. Its inherited CLAVIS_KEY is not an inspection of another
+module path, PATH default, inherited APOLLO_KEY, effective unit paths/drop-ins/ExecStart,
+and known rule precedence. Its inherited APOLLO_KEY is not an inspection of another
 running Shell's environment. `runtimeReady=false` can mean optional features are off;
 the existing exit-code/dependency contract is preserved.
 

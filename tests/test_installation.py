@@ -62,7 +62,7 @@ def test_development_configuration_without_base_and_retraction(tmp_path, monkeyp
         "run",
         lambda *a, **kw: SimpleNamespace(returncode=0, stdout="not-found\n"),
     )
-    args = SimpleNamespace(dev_services="enable", clavis_unit=None)
+    args = SimpleNamespace(dev_services="enable", apollo_unit=None)
     installer.dev_services(args)
     user = config / "systemd/user"
     override = user / f"{installer.UNIT}.d/80-key-cli-development.conf"
@@ -72,7 +72,7 @@ def test_development_configuration_without_base_and_retraction(tmp_path, monkeyp
     custom = override.parent / "90-user.conf"
     custom.write_text("[Service]\nRestartSec=10\n")
     installer.dev_services(args)
-    installer.dev_services(SimpleNamespace(dev_services="disable", clavis_unit=None))
+    installer.dev_services(SimpleNamespace(dev_services="disable", apollo_unit=None))
     assert custom.exists()
     assert not override.exists()
     assert not (user / installer.UNIT).exists()
@@ -90,7 +90,7 @@ def test_existing_base_is_not_adopted(tmp_path, monkeypatch):
     (repo / ".venv/bin").mkdir(parents=True)
     (repo / ".venv/bin/key").touch()
     monkeypatch.setattr(installer, "BASE", repo)
-    installer.dev_services(SimpleNamespace(dev_services="enable", clavis_unit=None))
+    installer.dev_services(SimpleNamespace(dev_services="enable", apollo_unit=None))
     assert not (tmp_path / "systemd/user" / installer.UNIT).exists()
 
 
@@ -140,7 +140,7 @@ def test_doctor_distinguishes_invocation_and_path_default(tmp_path, monkeypatch)
     from key_cli.commands import doctor
 
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
-    monkeypatch.setenv("CLAVIS_KEY", "/selected/shell/key")
+    monkeypatch.setenv("APOLLO_KEY", "/selected/shell/key")
     monkeypatch.setattr(doctor.sys, "argv", ["/development/.venv/bin/key"])
     monkeypatch.setattr(doctor, "current_key_executable", lambda **kw: "/development/.venv/bin/key")
     monkeypatch.setattr(doctor.shutil, "which", lambda name: "/usr/bin/key")
@@ -149,13 +149,13 @@ def test_doctor_distinguishes_invocation_and_path_default(tmp_path, monkeypatch)
         "run",
         lambda *a, **kw: SimpleNamespace(
             returncode=0,
-            stdout="FragmentPath=/usr/local/lib/systemd/user/clavis-clipboard.service\nDropInPaths=/user/dev.conf\nExecStart=development-key\n",
+            stdout="FragmentPath=/usr/local/lib/systemd/user/apollo-clipboard.service\nDropInPaths=/user/dev.conf\nExecStart=development-key\n",
         ),
     )
     result = doctor.installation_details()
     assert result["keyPath"] == "/usr/bin/key"
     assert result["currentKey"] == result["invocation"] == "/development/.venv/bin/key"
-    assert result["clavisKey"] == "/selected/shell/key"
+    assert result["apolloKey"] == "/selected/shell/key"
     assert result["pythonExecutable"]
     assert result["modulePath"].endswith("key_cli")
-    assert result["userUnits"]["clavis-clipboard.service"]["DropInPaths"] == "/user/dev.conf"
+    assert result["userUnits"]["apollo-clipboard.service"]["DropInPaths"] == "/user/dev.conf"

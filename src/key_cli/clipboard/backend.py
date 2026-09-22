@@ -281,7 +281,7 @@ def image_info(data: bytes) -> tuple[str, int, int] | None:
 
 def preview_cache_root() -> Path:
     return (
-        Path(os.environ.get("XDG_CACHE_HOME", str(Path.home() / ".cache"))) / "clavis" / "clipboard"
+        Path(os.environ.get("XDG_CACHE_HOME", str(Path.home() / ".cache"))) / "apollo" / "clipboard"
     )
 
 

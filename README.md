@@ -1,13 +1,16 @@
 # key-cli
 
-The command-line companion for [Clavis Shell](https://github.com/StatIndet/quickshell).
+The command-line companion for [Apollo Shell](https://github.com/Eluna007/ApolloDot).
 It provides the `key` command for shell lifecycle and IPC, screen/audio recording,
 saved-file actions, clipboard history and event-driven Caps Lock / Num Lock state.
 
-Clavis owns the interface; key-cli owns these independent system backends and their
-[JSON/JSONL protocol](docs/protocol.md). [keytop](https://github.com/StatIndet/keytop)
-provides kernel/system information snapshots and metrics directly to Clavis through
+Apollo owns the interface; key-cli owns these independent system backends and their
+[JSON/JSONL protocol](docs/protocol.md). [keytop](https://github.com/Eluna007/keytop)
+provides kernel/system information snapshots and metrics directly to Apollo through
 its own JSONL stream.
+
+Forked from [StatIndet/key-cli](https://github.com/StatIndet/key-cli) and rebranded for
+Apollo. Upstream fixes are reviewed and merged by hand.
 
 ## Scope
 
@@ -21,7 +24,7 @@ its own JSONL stream.
 | Caps Lock / Num Lock snapshots and events | `key keyboard` |
 | Runtime diagnostics and version | `key doctor`, `key version` |
 
-Clavis owns the UI and its native weather, media, lyrics and compositor integrations.
+Apollo owns the UI and its native weather, media, lyrics and compositor integrations.
 Key-cli does not forward system metrics or implement a second system monitor.
 
 ## Development
@@ -53,15 +56,15 @@ base unit:
 systemctl --user daemon-reload
 ```
 
-To also generate the Clavis development override, reuse Clavis's own unit:
+To also generate the Apollo development override, reuse Apollo's own unit:
 
 ```bash
-./scripts/install.sh --dev-services enable --clavis-unit ~/Projects/clavis/packaging/systemd/user/clavis-shell.service
+./scripts/install.sh --dev-services enable --apollo-unit ~/Projects/ApolloDot/packaging/systemd/user/apollo-shell.service
 ```
 
 The tool prints the base-unit link command if needed. Both overrides use this checkout's
 absolute `.venv/bin/key`, without relying on fish PATH. `key shell` propagates its own
-entry point through `CLAVIS_KEY`; clipboard callbacks use their invoking `key` too.
+entry point through `APOLLO_KEY`; clipboard callbacks use their invoking `key` too.
 Service activation is separate; see [installation details](docs/installation.md).
 Remove only generated development configuration with:
 
@@ -110,7 +113,7 @@ workflow is provided here.
 ### Caps Lock / Num Lock
 
 Keyboard monitoring reads actual evdev LED state and handles device changes through udev.
-It has no periodic status query or polling fallback. Clavis starts one shared
+It has no periodic status query or polling fallback. Apollo starts one shared
 `key keyboard watch` child process; it does not require a separate keyboard service.
 
 The optional authorization rule grants access to the **whole keyboard event device**,
@@ -135,15 +138,15 @@ key keyboard watch --format jsonl
 ```
 
 The first line is a `snapshot`; normal lock changes produce `changed` events. Silence
-between changes is expected. Press Ctrl+C to stop this diagnostic process. Clavis uses
+between changes is expected. Press Ctrl+C to stop this diagnostic process. Apollo uses
 snapshots to establish a baseline without showing a toggle notification.
 
-Enable the Caps Lock and Num Lock OSD switches in **Clavis Settings → Keystone**.
+Enable the Caps Lock and Num Lock OSD switches in **Apollo Settings → Keystone**.
 If using a venv, substitute `.venv/bin/key` in the diagnostic commands above.
 
 ### Clipboard history
 
-Clipboard capture uses the separate `clavis-clipboard.service` user service. It continues
+Clipboard capture uses the separate `apollo-clipboard.service` user service. It continues
 across shell restarts and is independent of keyboard permissions or monitor failures.
 The packaged unit requires an active `niri.service`.
 
@@ -152,7 +155,7 @@ After installing the source unit or configuring the development override, enable
 ```bash
 systemctl --user is-active niri.service
 systemctl --user daemon-reload
-systemctl --user enable --now clavis-clipboard.service
+systemctl --user enable --now apollo-clipboard.service
 key clipboard status --format json
 ```
 
@@ -161,7 +164,7 @@ Check `watcherRunning` in the status response; installed executables alone do no
 capture is running. To stop capture without disabling keyboard monitoring:
 
 ```bash
-systemctl --user disable --now clavis-clipboard.service
+systemctl --user disable --now apollo-clipboard.service
 ```
 
 History is stored by cliphist. The saved history limit defaults to 500 and accepts
@@ -179,12 +182,12 @@ keeping the newest records. The query limit is a separate setting.
 
 ## Command reference
 
-Use `key --help` or `key COMMAND --help` for all options. For new Clavis keybindings,
+Use `key --help` or `key COMMAND --help` for all options. For new Apollo keybindings,
 prefer direct Quickshell IPC; `key ipc` remains available as a compatibility entry:
 
 ```bash
-qs -c clavis ipc call sidebar toggle dashboard
-qs -c clavis ipc call sidebar toggle quicksettings
+qs -c apollo ipc call sidebar toggle dashboard
+qs -c apollo ipc call sidebar toggle quicksettings
 ```
 
 These targets select sidebar content, independently of the configured screen edge.
@@ -221,7 +224,7 @@ Terminal apps use the system terminal launcher. See [file actions](docs/protocol
 
 | Feature | Runtime dependencies |
 | --- | --- |
-| Shell and IPC | Clavis Shell and Quickshell (`qs`) |
+| Shell and IPC | Apollo Shell and Quickshell (`qs`) |
 | Saved-file actions | GLib (`gio`), a default application; `xdg-terminal-exec` for terminal apps; `busctl` for selection |
 | Keyboard LEDs | Python `evdev`, `pyudev`, and access to the relevant evdev devices |
 | Clipboard | `cliphist`, `wl-copy`, `wl-paste`; capture also requires the watcher |
@@ -235,11 +238,11 @@ dependencies, not whether every feature is running.
 
 | Symptom | Check |
 | --- | --- |
-| `keyboard` is an unknown command | An older `key` is being invoked. Check `command -v key`, the shell's `CLAVIS_KEY`, and the venv executable directly. |
+| `keyboard` is an unknown command | An older `key` is being invoked. Check `command -v key`, the shell's `APOLLO_KEY`, and the venv executable directly. |
 | `keyboard_dependency_unavailable` | Install evdev/pyudev in the Python environment used by that `key`; system Python and a venv are separate environments. |
 | `keyboard_device_unavailable` / permission denied | Check optional udev authorization, active local session and device ACLs. Python dependencies do not grant device access. |
-| Watch reports changes but Clavis shows no OSD | Check the Keystone switches and restart Clavis with the intended key-cli version. |
-| Clipboard watcher is inactive | Check `niri.service` and `systemctl --user status clavis-clipboard.service`. |
+| Watch reports changes but Apollo shows no OSD | Check the Keystone switches and restart Apollo with the intended key-cli version. |
+| Clipboard watcher is inactive | Check `niri.service` and `systemctl --user status apollo-clipboard.service`. |
 
 ## Checks and removal
 
@@ -252,7 +255,7 @@ scripts/check.sh --build
 The daily check runs Ruff, compilation and pytest against current source. `--build`
 adds wheel creation/content validation and isolated install verification; it is separate
 from distribution package validation. Format only changed files. Tests do not depend on
-Clavis or keytop checkouts.
+Apollo or keytop checkouts.
 
 Withdraw only installer-owned persistent keyboard authorization independently:
 

@@ -1,4 +1,4 @@
-"""Public file commands, independent of Clavis and its installation."""
+"""Public file commands, independent of Apollo and its installation."""
 
 from ..files import backend
 

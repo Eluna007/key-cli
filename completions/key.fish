@@ -1,5 +1,5 @@
-complete -c key -f -n '__fish_use_subcommand' -a shell -d 'start or inspect Clavis Quickshell'
-complete -c key -f -n '__fish_use_subcommand' -a ipc -d 'route Clavis IPC'
+complete -c key -f -n '__fish_use_subcommand' -a shell -d 'start or inspect Apollo Quickshell'
+complete -c key -f -n '__fish_use_subcommand' -a ipc -d 'route Apollo IPC'
 complete -c key -f -n '__fish_use_subcommand' -a record -d 'record the screen'
 complete -c key -f -n '__fish_use_subcommand' -a audio -d 'record audio to M4A'
 complete -c key -f -n '__fish_use_subcommand' -a clipboard -d 'operate on clipboard history'
@@ -7,7 +7,7 @@ complete -c key -f -n '__fish_use_subcommand' -a doctor -d 'check runtime depend
 complete -c key -f -n '__fish_use_subcommand' -a version -d 'show version metadata'
 
 complete -c key -f -n '__fish_seen_subcommand_from shell' -l daemon -s d -d 'start qs detached'
-complete -c key -f -n '__fish_seen_subcommand_from shell' -l kill -s k -d 'stop the clavis configuration'
+complete -c key -f -n '__fish_seen_subcommand_from shell' -l kill -s k -d 'stop the apollo configuration'
 complete -c key -f -n '__fish_seen_subcommand_from shell' -l log -s l -d 'print the qs log'
 complete -c key -f -n '__fish_seen_subcommand_from shell' -l show -s s -d 'show IPC methods'
 

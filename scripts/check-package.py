@@ -43,13 +43,13 @@ def main():
         files = set(subprocess.check_output(["bsdtar", "-tf", str(path)], text=True).splitlines())
         if any(f.startswith(("home/", "usr/local/", "usr/etc/")) for f in files):
             raise ValueError("Package writes outside the distribution layout")
-        if name == "clavis-shell":
-            prefix = "etc/xdg/quickshell/clavis/"
+        if name == "apollo-shell":
+            prefix = "etc/xdg/quickshell/apollo/"
             required = {
                 prefix + "shell.qml",
                 prefix + "AppShell.qml",
                 prefix + "licenses/Meteocons-MIT.txt",
-                "usr/lib/systemd/user/clavis-shell.service",
+                "usr/lib/systemd/user/apollo-shell.service",
             }
             for module in (
                 "Weather",
@@ -64,7 +64,7 @@ def main():
                 "Media",
                 "DesktopCards",
             ):
-                required.add("usr/lib/qt6/qml/Clavis/" + module + "/qmldir")
+                required.add("usr/lib/qt6/qml/Apollo/" + module + "/qmldir")
             for style in ("fill", "flat", "line", "monochrome"):
                 required.add(
                     prefix + "assets/icons/weather/meteocons/svg/" + style + "/not-available.svg"
@@ -84,7 +84,7 @@ def main():
         elif name == "key-cli":
             required = {
                 "usr/bin/key",
-                "usr/lib/systemd/user/clavis-clipboard.service",
+                "usr/lib/systemd/user/apollo-clipboard.service",
                 "usr/share/fish/vendor_completions.d/key.fish",
             }
             versions = [f for f in files if f.endswith("/key_cli/VERSION")]
@@ -93,7 +93,7 @@ def main():
             if any("udev/" in f for f in files):
                 raise ValueError("Base CLI package unexpectedly grants keyboard access")
         elif name == "key-cli-keyboard-access":
-            required = {"usr/lib/udev/rules.d/71-clavis-keyboard-leds.rules"}
+            required = {"usr/lib/udev/rules.d/71-apollo-keyboard-leds.rules"}
             if "usr/bin/key" in files:
                 raise ValueError("Access package must not contain the CLI")
         elif name == "keytop":
